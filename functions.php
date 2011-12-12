@@ -208,6 +208,11 @@ function parse_packet(){
 				}
 				$pdata[] = $r;
 				break;
+			case "byteArray":
+				$len = $pdata[2];
+				$pdata[] = substr($buffer,$offset,$len);
+				$offset += $len;
+				break;
 			case "chunkArray":
 				$len = max(0,$pdata[6]);
 				$first = false;

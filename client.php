@@ -7,6 +7,8 @@ if(!defined('CLIENT_LOADED')){
 	//include("nbt.class.php");
 	//ini_set("display_errors", 0);
 	define('CLIENT_LOADED', true);
+	define("MAX_BUFFER_BYTES", 1024 * 1024 * 16);
+	ini_set("memory_limit", "32M");
 }
 
 $versions = array(
@@ -21,11 +23,10 @@ $versions = array(
 	"1.6.6" => 12,
 	"1.6" => 12,
 );
-$versions["2.0.0"] = $versions["1.0.0"];
-$lastver = "1.0.0";
 
-define("MAX_BUFFER_BYTES", 1024 * 1024 * 16);
-ini_set("memory_limit", "32M");
+$lastver = "1.0.1";
+
+
 
 if(arg("help", false) !== false){
 
