@@ -10,6 +10,7 @@ if(!defined('CLIENT_LOADED')){
 }
 
 $versions = array(
+	"1.0.1" => 22,
 	"1.0.0" => 22,
 	"1.8.1" => 17,
 	"1.8" => 17,
