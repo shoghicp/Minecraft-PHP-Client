@@ -1,0 +1,5 @@
+Run client.php with PHP-CLI
+
+Example:
+
+php client.php --help
