@@ -1,6 +1,14 @@
 <?php
 
 
+function console($message, $EOL = true, $log = true){
+	global $path;
+	$message .= $EOL == true ? PHP_EOL:"";
+	if($log and arg("log", false) != false){
+		file_put_contents($path."console.log", $message, FILE_APPEND);
+	}
+	echo $message;
+}
 
 function string_pack($len){
 	return "\00".pack("H*",str_pad(dechex($len),2,"0",STR_PAD_LEFT));
@@ -153,7 +161,7 @@ function parse_packet(){
 				$len = read_short(substr($buffer,$offset,2));
 				$offset += 2;
 				$raw[] = $r = substr($buffer,$offset,$len * 2);
-				$pdata[] = no_endian($r);
+				$pdata[] = utf16_decode($r);
 				$offset += $len * 2;
 				break;
 			case "long":
@@ -576,6 +584,23 @@ function hexdump ($data, $htmloutput = true, $uppercase = false, $return = false
     } else {
         return $dump;
     }
+}
+
+function utf16_decode( $str ) {
+    if( strlen($str) < 2 ) return $str;
+    $bom_be = true;
+    $c0 = ord($str{0});
+    $c1 = ord($str{1});
+    if( $c0 == 0xfe && $c1 == 0xff ) { $str = substr($str,2); }
+    elseif( $c0 == 0xff && $c1 == 0xfe ) { $str = substr($str,2); $bom_be = false; }
+    $len = strlen($str);
+    $newstr = '';
+    for($i=0;$i<$len;$i+=2) {
+        if( $bom_be ) { $val = ord($str{$i})   << 4; $val += ord($str{$i+1}); }
+        else {        $val = ord($str{$i+1}) << 4; $val += ord($str{$i}); }
+        $newstr .= ($val == 0x228) ? "\n" : chr($val);
+    }
+    return $newstr;
 }
 
 ?>

@@ -40,6 +40,7 @@ Parameters:
 \tusername => username to use in server and minecraft.net (if PREMIUM), default "Player"
 \tpassword => password to use in minecraft.net, if PREMIUM
 \tsecure => use HTTPS to connect to minecraft.net
+\tdump => dump map chunks (experimental! [no crash])
 \tlog => write a log in packets.log
 
 Example:
@@ -73,7 +74,14 @@ $sock = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
 
 socket_connect($sock, $server, $port);
 socket_set_block($sock);
-echo "[*] Sending Handshake". PHP_EOL;
+
+/*
+
+------------------ AUTH START -----------------
+
+*/
+
+console("[*] Sending Handshake");
 write_packet("02", array(
 	"username" => $username,
 ));
@@ -82,13 +90,13 @@ buffer();
 $packet = parse_packet(); //Wait for Server Handshake
 
 if($packet["server_id"] != "-" and $packet["server_id"] != "+"){
-	echo "[*] Server is Premium (SID: ".$packet["server_id"].")" . PHP_EOL;
+	console("[*] Server is Premium (SID: ".$packet["server_id"].")");
 	if($packet["server_id"] == "" or strpos($packet["server_id"], "&") !== false){
-		echo "[!] NAME SPOOF DETECTED" . PHP_EOL;
+		console("[!] NAME SPOOF DETECTED");
 	}
 	if($secure !== false){
 		$proto = "https";
-		echo "[+] Using secure HTTPS connection" . PHP_EOL;
+		console("[+] Using secure HTTPS connection");
 	}else{
 		$proto = "http";
 	}
@@ -96,32 +104,36 @@ if($packet["server_id"] != "-" and $packet["server_id"] != "+"){
 	$response = curl_get($proto."://login.minecraft.net/?user=".$username."&password=".$password."&version=12");
 	switch($response){
 		case 'Bad Login':
-			die("[-] Bad login");
+			console("[-] Bad login");
+			die();
 			break;
 		case "Old Version":
-			die("[-] Old Version");
+			console("[-] Old Version");
+			die();
 			break;
 		default:
 			$content = explode(":",$response);
 			if(!is_array($content)){
-				die("[-] Unknown Login Error: \"".$response."\"");
+				console("[-] Unknown Login Error: \"".$response."\"");
+				die();
 			}
 			$login["last_version"] = $content[0];
 			$login["download_ticket"] = $content[1];
 			$login["username"] = $content[2];
 			$username = $content[2];
 			$login["session_id"] = $content[3];
-			echo "[+] Logged into minecraft.net". PHP_EOL;
+			console("[+] Logged into minecraft.net". PHP_EOL);
 			break;
 	}
 	$res = curl_get("http://session.minecraft.net/game/joinserver.jsp?user=".$username."&sessionId=".$login["session_id"]."&serverId=".$packet["server_id"]); //User check
 	if($res != "OK"){
-		die("[-] Error in User Check: \"".$res."\"");
+		console("[-] Error in User Check: \"".$res."\"");
+		die();
 	}
 }else{
-	echo "[*] Server is not Premium" . PHP_EOL;
+	console("[*] Server is not Premium");
 }
-echo "[*] Sending Login Request". PHP_EOL;
+console("[*] Sending Login Request");
 
 write_packet("01",array(
 	"version" => $protocol,
@@ -129,6 +141,11 @@ write_packet("01",array(
 ));
 
 socket_set_nonblock($sock);
+
+/*
+---------- AUTH FINALIZED --------------
+*/
+
 
 $next = time();
 while(1){
@@ -141,29 +158,36 @@ while(1){
 				write_packet("00",$packet);
 				break;			
 			case "01":
-				echo "[+] Login Request accepted".PHP_EOL;
-				echo "[*] EID: ".$packet["eid"]. PHP_EOL;
-				echo "[*] Seed: ".$packet["seed"]. PHP_EOL;
+				console("[+] Login Request accepted");
+				console("[*] EID: ".$packet["eid"]);
+				console("[*] Seed: ".$packet["seed"]);
 				if($protocol>=17){
-					echo "[*] Mode: ".($packet["mode"]==0 ? "survival":"creative"). PHP_EOL;
-					echo "[*] Max players: ".$packet["max_players"]. PHP_EOL;
+					console("[*] Mode: ".($packet["mode"]==0 ? "survival":"creative"));
+					console("[*] Max players: ".$packet["max_players"]);
 				}
 				$logged_in = true;
 				break;
 			case "03":
-				if(strpos($packet["message"], "There are") === false and strpos($packet["message"], "Moderador:") === false and strpos($packet["message"], "Veterano:") === false and strpos($packet["message"], "Novato:") === false and strpos($packet["message"], "Vip:") === false){
-					echo "[+] ".$packet["message"] .PHP_EOL;
+				$len = strlen($packet["message"]);
+				//Clean packet for console
+				for($i=0;$i<$len;++$i){
+					if($packet["message"]{$i} == "\xa7"){
+						$packet["message"]{$i} = "\xff";
+						$packet["message"]{$i+1} = "\xff";
+					}
 				}
+				$packet["message"] = str_replace("\xff", "", $packet["message"]);
+				console($packet["message"]);
 				break;
 				
 			case "04":
-				echo "[*] Time: ".((intval($packet['time']/1000+6) % 24)).':'.str_pad(intval(($packet['time']/1000-floor($packet['time']/1000))*60),2,"0",STR_PAD_LEFT).', '.(($packet['time'] > 23100 or $packet['time'] < 12900) ? "day":"night")."   \r";
+				console("[*] Time: ".((intval($packet['time']/1000+6) % 24)).':'.str_pad(intval(($packet['time']/1000-floor($packet['time']/1000))*60),2,"0",STR_PAD_LEFT).', '.(($packet['time'] > 23100 or $packet['time'] < 12900) ? "day":"night")."   \r", false, false);
 				break;
 			case "14":
-				echo "[+] Player \"".$packet["name"]."\" (EID: ".$packet["eid"].") spawned" . PHP_EOL;
+				console("[+] Player \"".$packet["name"]."\" (EID: ".$packet["eid"].") spawned");
 				break;
 			case "ff":
-				echo "[-] Kicked from server, \"".$packet["message"]."\"". PHP_EOL;
+				console("[-] Kicked from server, \"".$packet["message"]."\"");
 				socket_close($sock);
 				die();
 				break;
