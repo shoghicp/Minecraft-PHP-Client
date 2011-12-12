@@ -273,6 +273,15 @@ $pstruct = array(
 		"byte",
 	),
 	
+	"3c" => array(
+		"double",
+		"double",
+		"double",
+		"float",
+		"int",
+		"explosionRecord"
+	),
+	
 	"3d" => array(
 		"int",
 		"int",

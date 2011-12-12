@@ -187,9 +187,17 @@ function parse_packet(){
 				$offset += 2;
 				break;
 			case "bool":
+			case "boolean":
 				$raw[] = $r = $buffer{$offset};
 				$pdata[] = read_byte($r, false) == 0 ? false:true;
 				$offset += 1;
+				break;
+			case "explosionRecord":
+				$r = array();
+				for($i=$pdata[4];$i>0;--$i){
+					$r[] = array(read_byte($buffer{$offset}),read_byte($buffer{$offset+1}),read_byte($buffer{$offset+2}));
+				}
+				$pdata[] = $r;
 				break;
 			case "chunkArray":
 				$len = max(0,$pdata[6]);

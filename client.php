@@ -55,6 +55,9 @@ $username	= arg("username", "Player");
 $password	= arg("password", "");
 $secure		= arg("secure", false);
 $version	= arg("version", $lastver);
+if(arg("log", false) != false){
+	file_put_contents($path."packets.log", "");
+}
 $protocol = $versions[$version];
 
 $colorchar = "\xc2\xa7";
@@ -153,7 +156,7 @@ while(1){
 				break;
 				
 			case "04":
-				echo "[*] Time set to ".$packet["time"]."   \r";
+				echo "[*] Time: ".((intval($packet['time']/1000+6) % 24)).':'.str_pad(intval(($packet['time']/1000-floor($packet['time']/1000))*60),2,"0",STR_PAD_LEFT).', '.(($packet['time'] > 23100 or $packet['time'] < 12900) ? "day":"night")."   \r";
 				break;
 				
 			case "ff":
