@@ -196,6 +196,7 @@ function parse_packet(){
 				$r = array();
 				for($i=$pdata[4];$i>0;--$i){
 					$r[] = array(read_byte($buffer{$offset}),read_byte($buffer{$offset+1}),read_byte($buffer{$offset+2}));
+					$offset += 3;
 				}
 				$pdata[] = $r;
 				break;
@@ -362,6 +363,10 @@ function parse_packet(){
 			break;
 		case "04": //Time update
 			$data["time"] = $pdata[0];//unpack("L*",substr($buffer,0,8));
+			break;
+		case "14": //named entity spawn
+			$data["eid"] = $pdata[0];
+			$data["name"] = $pdata[1];
 			break;
 		case "33":
 			if(arg("dump",false) != false){

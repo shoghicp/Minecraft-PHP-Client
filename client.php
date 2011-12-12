@@ -57,16 +57,14 @@ $secure		= arg("secure", false);
 $version	= arg("version", $lastver);
 if(arg("log", false) != false){
 	file_put_contents($path."packets.log", "");
+	file_put_contents($path."console.log", "");
 }
 $protocol = $versions[$version];
-
 $colorchar = "\xc2\xa7";
 
 include("pstruct_modifier.php");
 
-if($version == "1.0.0"){
-	$version = "2.0.0"; //version_compare() issues
-}
+
 $logged_in = false;
 
 $login = array("last_version" => "", "download_ticket" => "", "username" => $username, "session_id" => "");
@@ -144,10 +142,13 @@ while(1){
 				break;			
 			case "01":
 				echo "[+] Login Request accepted".PHP_EOL;
+				echo "[*] EID: ".$packet["eid"]. PHP_EOL;
+				echo "[*] Seed: ".$packet["seed"]. PHP_EOL;
+				if($protocol>=17){
+					echo "[*] Mode: ".($packet["mode"]==0 ? "survival":"creative"). PHP_EOL;
+					echo "[*] Max players: ".$packet["max_players"]. PHP_EOL;
+				}
 				$logged_in = true;
-				/*write_packet("03", array(
-					"message" => $colorchar."9Hola a todos!!",
-				));*/
 				break;
 			case "03":
 				if(strpos($packet["message"], "There are") === false and strpos($packet["message"], "Moderador:") === false and strpos($packet["message"], "Veterano:") === false and strpos($packet["message"], "Novato:") === false and strpos($packet["message"], "Vip:") === false){
@@ -158,7 +159,9 @@ while(1){
 			case "04":
 				echo "[*] Time: ".((intval($packet['time']/1000+6) % 24)).':'.str_pad(intval(($packet['time']/1000-floor($packet['time']/1000))*60),2,"0",STR_PAD_LEFT).', '.(($packet['time'] > 23100 or $packet['time'] < 12900) ? "day":"night")."   \r";
 				break;
-				
+			case "14":
+				echo "[+] Player \"".$packet["name"]."\" (EID: ".$packet["eid"].") spawned" . PHP_EOL;
+				break;
 			case "ff":
 				echo "[-] Kicked from server, \"".$packet["message"]."\"". PHP_EOL;
 				socket_close($sock);
