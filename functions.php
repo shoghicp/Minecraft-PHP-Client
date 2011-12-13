@@ -22,16 +22,32 @@ function read_byte($str, $signed = true){
 	return $b;
 }
 
-function read_short($str, $signed = true){
+function read_short($str){
 	list(,$unpacked) = unpack("n", substr($str, 0, 2));
 	if($unpacked >= pow(2, 15)) $unpacked -= pow(2, 16); // Convert unsigned short to signed short.
 	return $unpacked;
 }
 
-function read_int($str, $signed = true){
+function read_int($str){
 	list(,$unpacked) = unpack("N", substr($str, 0, 4));
 	if($unpacked >= pow(2, 31)) $unpacked -= pow(2, 32); // Convert unsigned int to signed int
 	return $unpacked;
+}
+
+function read_float($str){
+	list(,$value) = (pack('d', 1) == "\77\360\0\0\0\0\0\0")?unpack('f', substr($str,0, 4)):unpack('f', strrev(substr($str,0, 4)));
+	return $value;
+}
+function write_float($value){
+	return (pack('d', 1) == "\77\360\0\0\0\0\0\0")?pack('f', $value):strrev(pack('f', $value));
+}
+
+function read_double($str, $signed = true){
+	list(,$value) = (pack('d', 1) == "\77\360\0\0\0\0\0\0")?unpack('d', substr($str,0, 8)):unpack('d', strrev(substr($str,0, 8)));
+	return $value;
+}
+function write_double($value){
+	return (pack('d', 1) == "\77\360\0\0\0\0\0\0")?pack('d', $value):strrev(pack('d', $value));
 }
 
 function read_long($str, $signed = true){
@@ -44,6 +60,9 @@ function read_long($str, $signed = true){
 		$n = $n>9223372036854775807 ? -(18446744073709551614-$n+1):$n;
 	}
 	return sprintf("%.0F", $n);
+}
+function write_long($value){
+	return (pack('d', 1) == "\77\360\0\0\0\0\0\0")?pack('d', $value):strrev(pack('d', $value));
 }
 
 function convert($format, $str){
@@ -186,7 +205,7 @@ function parse_packet(){
 				break;
 			case "double":
 				$raw[] = $r = substr($buffer,$offset, 8);
-				$pdata[] = convert("d", $r);
+				$pdata[] = read_double($r);
 				$offset += 8;
 				break;
 			case "short":
@@ -377,6 +396,20 @@ function parse_packet(){
 		case "04": //Time update
 			$data["time"] = $pdata[0];//unpack("L*",substr($buffer,0,8));
 			break;
+		case "06": //Spawn pos
+			$data["x"] = $pdata[0];
+			$data["y"] = $pdata[1];
+			$data["z"] = $pdata[2];
+			break;
+		case "0d":
+			$data["x"] = $pdata[0];
+			$data["stance"] = $pdata[1];
+			$data["y"] = $pdata[2];
+			$data["z"] = $pdata[3];
+			$data["yaw"] = $pdata[4];
+			$data["pitch"] = $pdata[5];
+			$data["ground"] = $pdata[6];
+			break;
 		case "14": //named entity spawn
 			$data["eid"] = $pdata[0];
 			$data["name"] = $pdata[1];
@@ -402,37 +435,68 @@ function parse_packet(){
 	return $data;
 }
 
-function write_packet($pid,$data){
+function write_packet($pid,$data, $raw = false){
 	global $sock, $path, $protocol;
-	switch($pid){
-		case "00":
-			$packet = "\x00".
-			($protocol <= 14 ? "":$data["raw"][0]);
-			break;
-		case "01":	//Login	
-			$packet = "\x01".
-			"\x00\x00".pack("n*",$data["version"]).
-			string_pack(strlen($data["username"])).
-			endian($data["username"]).
-			str_repeat("\x00", (version_compare($data["version"], "1.7.3", "<=") == true ? 9:16));
-			break;
-		
-		case "02": //Handshake
-			$packet = "\x02".
-			string_pack(strlen($data["username"])).endian($data["username"]);
-			break;
-		case "03":
-			$packet = "\x03".
-			string_pack(strlen($data["message"])).endian($data["message"]);
-			break;
-		case "0a":
-			$packet = "\x0a".
-			($data["ground"] == true ? "\x01":"\x00");
-			break;			
-		case "ff":
-			$packet = "\xff".
-			string_pack(strlen($data["message"])).endian($data["message"]);
-			break;
+	if($raw == false){
+		switch($pid){
+			case "00":
+				$packet = "\x00".
+				($protocol <= 14 ? "":$data["raw"][0]);
+				break;
+			case "01":	//Login	
+				$packet = "\x01".
+				"\x00\x00".pack("n*",$data["version"]).
+				string_pack(strlen($data["username"])).
+				endian($data["username"]).
+				str_repeat("\x00", (version_compare($data["version"], "1.7.3", "<=") == true ? 9:16));
+				break;
+			
+			case "02": //Handshake
+				$packet = "\x02".
+				string_pack(strlen($data["username"])).endian($data["username"]);
+				break;
+			case "03":
+				$packet = "\x03".
+				string_pack(strlen($data["message"])).endian($data["message"]);
+				break;
+			case "0a":
+				$packet = "\x0a".
+				($data["ground"] == true ? "\x01":"\x00");
+				break;	
+			case "0b":
+				$packet = "\x0b".
+				write_double($data["x"]).
+				write_double($data["y"]).
+				write_double($data["stance"]).
+				write_double($data["z"]).
+				($data["ground"] == true ? "\x01":"\x00");
+				break;
+			case "0c":
+				$packet = "\x0c".
+				write_float($data["yaw"]).
+				write_float($data["pitch"]).
+				($data["ground"] == true ? "\x01":"\x00");
+				break;
+			case "0d":
+				$packet = "\x0d".
+				write_double($data["x"]).
+				write_double($data["y"]).
+				write_double($data["stance"]).
+				write_double($data["z"]).
+				write_float($data["yaw"]).
+				write_float($data["pitch"]).
+				($data["ground"] == true ? "\x01":"\x00");
+				break;
+			case "ff":
+				$packet = "\xff".
+				string_pack(strlen($data["message"])).endian($data["message"]);
+				break;
+		}
+	}else{
+		$packet = pack("H*" , $pid);
+		foreach($data["raw"] as $field){
+			$packet .= $field;
+		}
 	}
 	if(arg("log", false) != false){
 		$len = strlen($packet);

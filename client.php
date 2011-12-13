@@ -148,9 +148,11 @@ socket_set_nonblock($sock);
 ---------- AUTH FINALIZED --------------
 */
 
-
+$spawn_packet = false;
 $next = time();
-while(1){
+$walk = 0.5;
+$start = $next;
+while($sock){
 	$time = time();
 	buffer();
 	if(strlen($buffer) > 0){	
@@ -185,6 +187,11 @@ while(1){
 			case "04":
 				console("[*] Time: ".((intval($packet['time']/1000+6) % 24)).':'.str_pad(intval(($packet['time']/1000-floor($packet['time']/1000))*60),2,"0",STR_PAD_LEFT).', '.(($packet['time'] > 23100 or $packet['time'] < 12900) ? "day":"night")."   \r", false, false);
 				break;
+			case "0d":
+				console("[+] Got spawn position: (".$packet["x"].",".$packet["y"].",".$packet["z"].")");
+				$spawn_packet = $packet;
+				write_packet("0d",$packet);
+				break;
 			case "14":
 				console("[+] Player \"".$packet["name"]."\" (EID: ".$packet["eid"].") spawned");
 				break;
@@ -203,6 +210,24 @@ while(1){
 		));
 		$do = true;
 	}
+	if($next <= $time and $time%4==0 and $spawn_packet !== false){
+		$walk = -$walk;
+		$spawn_packet["x"] += $walk;
+		write_packet("0b", $spawn_packet);
+		$do = true;
+	}
+	/*if($next <= $time and ($time+8)%16==0 and $spawn_packet !== false){
+		$spawn_packet2 = $spawn_packet;
+		$spawn_packet2["x"] += 1;
+		write_packet("0b", $spawn_packet2);
+		$do = true;
+	}*/
+	/*if($start+120<=$time){
+		write_packet("ff", array("message" => "Bot auto-disconnect"));
+		console("[-] Kicked from server, \"Bot auto-disconnect\"");
+		socket_close($sock);
+		die();
+	}*/
 	if($do){
 		$next = $time+1;
 	}
