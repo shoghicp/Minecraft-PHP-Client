@@ -371,7 +371,9 @@ $pstruct = array(
 		"short",
 	),
 	
-		
+	"fe" => array(
+		"string",
+	),
 	
 	"ff" => array(
 		"string",	

@@ -1,7 +1,7 @@
 <?php
 	/*
 		Modifiers of structure
-		Note that 2.x is final release versions
+
 	*/
 	
 	if($protocol <= 17){
@@ -18,6 +18,9 @@
 			"string",
 			"long",
 			"byte",
+		);
+		$pstruct["46"] = array(
+			"int",
 		);
 	}
 	

@@ -426,6 +426,12 @@ function parse_packet(){
 				file_put_contents($path.$fname,$chunk);
 			}
 			break;
+		case "46":
+			$data["reason"] = $pdata[0];
+			if($protocol <= 14){
+				$data["mode"] = $pdata[1];
+			}
+			break;
 		case "ff":
 			$data["message"] = $pdata[0];
 			break;
@@ -435,8 +441,8 @@ function parse_packet(){
 	return $data;
 }
 
-function write_packet($pid,$data, $raw = false){
-	global $sock, $path, $protocol;
+function write_packet($pid,$data = array(), $raw = false){
+	global $sock, $path, $protocol, $connected;
 	if($raw == false){
 		switch($pid){
 			case "00":
@@ -487,6 +493,9 @@ function write_packet($pid,$data, $raw = false){
 				write_float($data["pitch"]).
 				($data["ground"] == true ? "\x01":"\x00");
 				break;
+			case "fe":
+				$packet = "\xfe";
+				break;
 			case "ff":
 				$packet = "\xff".
 				string_pack(strlen($data["message"])).endian($data["message"]);
@@ -498,6 +507,10 @@ function write_packet($pid,$data, $raw = false){
 			$packet .= $field;
 		}
 	}
+	if(!$connected){
+		return false;
+	}
+	
 	if(arg("log", false) != false){
 		$len = strlen($packet);
 		$p = "==".time()."==> SENT Packet $pid, lenght $len:".PHP_EOL;
@@ -550,19 +563,21 @@ function curl_post($page, $args){
 }
 
 function buffer(){
-	global $buffer, $sock;
+	global $buffer, $sock, $connected;
 	if(!isset($buffer)){
 		$buffer = "";
 	}
 	if(strlen($buffer) < (MAX_BUFFER_BYTES / 8)){
-		if(strlen($buffer) < 128){
+		if(strlen($buffer) < 128 and $connected){
 			socket_set_block($sock);
 		}else{
 			socket_set_nonblock($sock);
 		}
-		$read = @socket_read($sock,2048, PHP_BINARY_READ);
+		$read = @socket_read($sock,4096, PHP_BINARY_READ);
 		if($read != false and $read != ""){
 			$buffer .= $read;
+		}elseif(socket_last_error($sock) == 104){
+			$connected = false;
 		}
 	}
 	

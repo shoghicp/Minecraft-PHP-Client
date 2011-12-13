@@ -31,7 +31,8 @@ $lastver = "1.0.1";
 if(arg("help", false) !== false){
 
 echo <<<USAGE
-/**/ Minecraft PHP Client /**/
+
+<?php Minecraft PHP Client ?>
 \tby shoghicp
 Usage: php {$argv[0]} [parameters]
 
@@ -43,7 +44,8 @@ Parameters:
 \tpassword => password to use in minecraft.net, if PREMIUM
 \tsecure => use HTTPS to connect to minecraft.net
 \tdump => dump map chunks (experimental! [no crash])
-\tlog => write a log in packets.log
+\tlog => write a log in packets.log and console.log
+\tping => ping (packet 0xFE) a server, and returns info
 
 Example:
 php {$argv[0]} --server=127.0.0.1 --username=shoghicp --version=1.8.1
@@ -63,19 +65,43 @@ if(arg("log", false) != false){
 	file_put_contents($path."console.log", "");
 }
 $protocol = $versions[$version];
-$colorchar = "\xc2\xa7";
+$colorchar = "\xa7";
 
 include("pstruct_modifier.php");
 
 
 $logged_in = false;
+$connected = true;
 
 $login = array("last_version" => "", "download_ticket" => "", "username" => $username, "session_id" => "");
+
+echo <<<INFO
+
+<?php Minecraft PHP Client ?>
+\tby shoghicp
+
+INFO;
 
 $sock = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
 
 socket_connect($sock, $server, $port);
 socket_set_block($sock);
+socket_set_option($sock, SOL_SOCKET, SO_KEEPALIVE, 1);
+socket_set_option($sock, getprotobyname("tcp"), TCP_NODELAY, 1);
+
+if(arg("ping", false) != false){
+	console("[+] Pinging ".$server." ...");
+	write_packet("fe");
+	buffer();
+	$packet = parse_packet();
+	if($packet["pid"] == "ff"){
+		$info = explode($colorchar,$packet["message"]);
+		console("[*] Name: ".$info[0]);
+		console("[*] Online players: ".$info[1]);
+		console("[*] Max players: ".$info[2]);
+	}
+	die();
+}
 
 /*
 
@@ -166,7 +192,7 @@ while($sock){
 				console("[*] EID: ".$packet["eid"]);
 				console("[*] Seed: ".$packet["seed"]);
 				if($protocol>=17){
-					console("[*] Mode: ".($packet["mode"]==0 ? "survival":"creative"));
+					console("[*] Gamemode: ".($packet["mode"]==0 ? "survival":"creative"));
 					console("[*] Max players: ".$packet["max_players"]);
 				}
 				$logged_in = true;
@@ -175,7 +201,7 @@ while($sock){
 				$len = strlen($packet["message"]);
 				//Clean packet for console
 				for($i=0;$i<$len;++$i){
-					if($packet["message"]{$i} == "\xa7"){
+					if($packet["message"]{$i} == $colorchar){
 						$packet["message"]{$i} = "\xff";
 						$packet["message"]{$i+1} = "\xff";
 					}
@@ -195,6 +221,26 @@ while($sock){
 			case "14":
 				console("[+] Player \"".$packet["name"]."\" (EID: ".$packet["eid"].") spawned");
 				break;
+			case "46";
+				switch($packet["reason"]){
+					case 0:
+						$m = "Invalid bed";
+						break;
+					case 1:
+						$m = "Started raining";
+						break;
+					case 2:
+						$m = "Ended raining";
+						break;
+					case 3:
+						$m = "Gamemode changed: ".($packet["mode"]==0 ? "survival":"creative");
+						break;
+					case 4:
+						$m = "Entered credits";
+						break;
+				}
+				console("[*] ".$m);
+				break;
 			case "ff":
 				console("[-] Kicked from server, \"".$packet["message"]."\"");
 				socket_close($sock);
@@ -204,13 +250,13 @@ while($sock){
 	}
 	
 	$do = false;
-	if($next <= $time and $time%8==0){
+	if($next <= $time and (time+1)%2==0 and $spawn_packet !== false){
 		write_packet("0a", array(
 			"ground" => true,
 		));
 		$do = true;
 	}
-	if($next <= $time and $time%4==0 and $spawn_packet !== false){
+	if($next <= $time and $time%2==0 and $spawn_packet !== false){
 		$walk = -$walk;
 		$spawn_packet["x"] += $walk;
 		write_packet("0b", $spawn_packet);
