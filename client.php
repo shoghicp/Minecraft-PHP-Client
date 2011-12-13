@@ -216,12 +216,6 @@ while($sock){
 		write_packet("0b", $spawn_packet);
 		$do = true;
 	}
-	/*if($next <= $time and ($time+8)%16==0 and $spawn_packet !== false){
-		$spawn_packet2 = $spawn_packet;
-		$spawn_packet2["x"] += 1;
-		write_packet("0b", $spawn_packet2);
-		$do = true;
-	}*/
 	/*if($start+120<=$time){
 		write_packet("ff", array("message" => "Bot auto-disconnect"));
 		console("[-] Kicked from server, \"Bot auto-disconnect\"");

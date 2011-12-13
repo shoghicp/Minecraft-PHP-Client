@@ -528,10 +528,6 @@ function no_endian($str){
 	return $f;
 }
 
-function endian_convert($a){
-	return ((($a&0x000000FF)<<24) | ((($a&0x0000FF00)>>8)<<16) | ((($a&0x00FF0000)>>16)<<8) | (($a&0xFF000000)>>24));
-}
-
 function curl_get($page){
 	$ch = curl_init ($page);
 	curl_setopt ($ch, CURLOPT_HTTPHEADER, array('User-Agent: Minecraft PHP Client'));
