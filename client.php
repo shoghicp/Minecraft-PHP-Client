@@ -46,7 +46,8 @@ Parameters:
 \tdump => dump map chunks (experimental! [no crash])
 \tlog => write a log in packets.log and console.log
 \tping => ping (packet 0xFE) a server, and returns info
-\thide => hides elements here from console, separated by a comma (sign, chat, nspawn, state)
+\thide => hides elements here from console, separated by a comma (sign, chat, nspawn, state, position)
+\tcrazyness => moves around doing things (moves head) (values: mad, normal)
 
 Example:
 php {$argv[0]} --server=127.0.0.1 --username=shoghicp --version=1.8.1 --hide=sign,chat
@@ -89,7 +90,7 @@ $sock = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
 socket_connect($sock, $server, $port);
 socket_set_block($sock);
 socket_set_option($sock, SOL_SOCKET, SO_KEEPALIVE, 1);
-socket_set_option($sock, getprotobyname("tcp"), TCP_NODELAY, 1);
+socket_set_option($sock, SOL_TCP, TCP_NODELAY, 1);
 
 if(arg("ping", false) != false){
 	console("[+] Pinging ".$server." ...");
@@ -104,6 +105,7 @@ if(arg("ping", false) != false){
 	}
 	die();
 }
+
 
 $hide = explode(",", arg("hide", ""));
 
@@ -178,12 +180,11 @@ socket_set_nonblock($sock);
 ---------- AUTH FINALIZED --------------
 */
 
-$spawn_packet = false;
-$next = time();
-$walk = 0.5;
+$position_packet = false;
+$next = 0;
 $start = $next;
 while($sock){
-	$time = time();
+	$time = microtime(true);
 	buffer();
 	if(strlen($buffer) > 0){	
 		$packet = parse_packet();
@@ -220,9 +221,13 @@ while($sock){
 				console("[*] Time: ".((intval($packet['time']/1000+6) % 24)).':'.str_pad(intval(($packet['time']/1000-floor($packet['time']/1000))*60),2,"0",STR_PAD_LEFT).', '.(($packet['time'] > 23100 or $packet['time'] < 12900) ? "day":"night")."   \r", false, false);
 				break;
 			case "0d":
-				console("[+] Got spawn position: (".$packet["x"].",".$packet["y"].",".$packet["z"].")");
-				$spawn_packet = $packet;
-				write_packet("0d",$packet);
+				if(!in_array("position",$hide)){
+					console("[+] Got position: (".$packet["x"].",".$packet["y"].",".$packet["z"].")");
+				}					
+				//if($position_packet === false){
+					write_packet("0d",$packet);
+				//}
+				$position_packet = $packet;
 				break;
 			case "14":
 				if(!in_array("nspawn",$hide)){
@@ -265,16 +270,32 @@ while($sock){
 	}
 	
 	$do = false;
-	if($next <= $time and (time+1)%2==0 and $spawn_packet !== false){
+	/*if($next <= $time and $position_packet !== false){
 		write_packet("0a", array(
 			"ground" => true,
 		));
 		$do = true;
-	}
-	if($next <= $time and $time%2==0 and $spawn_packet !== false){
-		$walk = -$walk;
-		$spawn_packet["x"] += $walk;
-		write_packet("0b", $spawn_packet);
+	}*/
+	if($next <= $time and $position_packet !== false){
+		//$position_packet["x"] += arg("crazyness",0) == 0 ? mt_rand(-30,30)/70:mt_rand(-45,45)/70;
+		//$position_packet["z"] += arg("crazyness",0) == 0 ? mt_rand(-30,30)/70:mt_rand(-45,45)/70;
+		if(arg("crazyness","normal") == "mad"){
+			$position_packet["x"] += mt_rand(-45,45)/50;
+			$position_packet["z"] += mt_rand(-45,45)/50;
+			$position_packet["yaw"] = mt_rand(-360,360);
+			$position_packet["pitch"] = mt_rand(-360,360);
+		}else{
+			if(mt_rand(0,100)<=20){
+				$position_packet["x"] += mt_rand(-30,30)/70;
+				$position_packet["z"] += mt_rand(-30,30)/70;
+			}
+			$position_packet["yaw"] += mt_rand(-25,25);
+			$position_packet["yaw"] %= 360;
+			$position_packet["pitch"] += mt_rand(-10,10);
+			$position_packet["pitch"] %= 55;
+		}
+		//$position_packet["pitch"] = arg("crazyness",0) == 0 ? mt_rand(-30,30):mt_rand(-360,360);
+		write_packet("0d", $position_packet);
 		$do = true;
 	}
 	/*if($start+120<=$time){
@@ -284,7 +305,7 @@ while($sock){
 		die();
 	}*/
 	if($do){
-		$next = $time+1;
+		$next = $time+0.1;
 	}
 	
 }
