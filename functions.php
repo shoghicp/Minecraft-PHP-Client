@@ -413,6 +413,9 @@ function parse_packet(){
 		case "14": //named entity spawn
 			$data["eid"] = $pdata[0];
 			$data["name"] = $pdata[1];
+			$data["x"] = $pdata[2];
+			$data["y"] = $pdata[3];
+			$data["z"] = $pdata[4];
 			break;
 		case "33":
 			if(arg("dump",false) != false){
@@ -431,6 +434,12 @@ function parse_packet(){
 			if($protocol <= 14){
 				$data["mode"] = $pdata[1];
 			}
+			break;
+		case "82":
+			$data["x"] = $pdata[0];
+			$data["y"] = $pdata[1];
+			$data["z"] = $pdata[2];
+			$data["text"] = array($pdata[3], $pdata[4], $pdata[5], $pdata[6]);
 			break;
 		case "ff":
 			$data["message"] = $pdata[0];

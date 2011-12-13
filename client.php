@@ -46,9 +46,10 @@ Parameters:
 \tdump => dump map chunks (experimental! [no crash])
 \tlog => write a log in packets.log and console.log
 \tping => ping (packet 0xFE) a server, and returns info
+\thide => hides elements here from console, separated by a comma (sign, chat, nspawn, state)
 
 Example:
-php {$argv[0]} --server=127.0.0.1 --username=shoghicp --version=1.8.1
+php {$argv[0]} --server=127.0.0.1 --username=shoghicp --version=1.8.1 --hide=sign,chat
 
 USAGE;
 die();
@@ -80,6 +81,7 @@ echo <<<INFO
 <?php Minecraft PHP Client ?>
 \tby shoghicp
 
+
 INFO;
 
 $sock = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
@@ -102,6 +104,8 @@ if(arg("ping", false) != false){
 	}
 	die();
 }
+
+$hide = explode(",", arg("hide", ""));
 
 /*
 
@@ -198,16 +202,18 @@ while($sock){
 				$logged_in = true;
 				break;
 			case "03":
-				$len = strlen($packet["message"]);
-				//Clean packet for console
-				for($i=0;$i<$len;++$i){
-					if($packet["message"]{$i} == $colorchar){
-						$packet["message"]{$i} = "\xff";
-						$packet["message"]{$i+1} = "\xff";
+				if(!in_array("chat",$hide)){
+					$len = strlen($packet["message"]);
+					//Clean packet for console
+					for($i=0;$i<$len;++$i){
+						if($packet["message"]{$i} == $colorchar){
+							$packet["message"]{$i} = "\xff";
+							$packet["message"]{$i+1} = "\xff";
+						}
 					}
+					$packet["message"] = str_replace("\xff", "", $packet["message"]);
+					console($packet["message"]);
 				}
-				$packet["message"] = str_replace("\xff", "", $packet["message"]);
-				console($packet["message"]);
 				break;
 				
 			case "04":
@@ -219,27 +225,36 @@ while($sock){
 				write_packet("0d",$packet);
 				break;
 			case "14":
-				console("[+] Player \"".$packet["name"]."\" (EID: ".$packet["eid"].") spawned");
+				if(!in_array("nspawn",$hide)){
+					console("[+] Player \"".$packet["name"]."\" (EID: ".$packet["eid"].") spawned at (".$packet["x"].",".$packet["y"].",".$packet["z"].")");
+				}
 				break;
 			case "46";
-				switch($packet["reason"]){
-					case 0:
-						$m = "Invalid bed";
-						break;
-					case 1:
-						$m = "Started raining";
-						break;
-					case 2:
-						$m = "Ended raining";
-						break;
-					case 3:
-						$m = "Gamemode changed: ".($packet["mode"]==0 ? "survival":"creative");
-						break;
-					case 4:
-						$m = "Entered credits";
-						break;
+				if(!in_array("state",$hide)){
+					switch($packet["reason"]){
+						case 0:
+							$m = "Invalid bed";
+							break;
+						case 1:
+							$m = "Started raining";
+							break;
+						case 2:
+							$m = "Ended raining";
+							break;
+						case 3:
+							$m = "Gamemode changed: ".($packet["mode"]==0 ? "survival":"creative");
+							break;
+						case 4:
+							$m = "Entered credits";
+							break;
+					}
+					console("[*] ".$m);
 				}
-				console("[*] ".$m);
+				break;
+			case "82":
+				if(!in_array("sign",$hide)){
+					console("[*] Sign at (".$packet["x"].",".$packet["y"].",".$packet["z"].")".PHP_EOL.implode(PHP_EOL,$packet["text"]));
+				}
 				break;
 			case "ff":
 				console("[-] Kicked from server, \"".$packet["message"]."\"");
