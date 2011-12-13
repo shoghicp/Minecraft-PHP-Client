@@ -183,6 +183,11 @@ socket_set_nonblock($sock);
 $position_packet = false;
 $next = 0;
 $start = $next;
+$ginfo = array(
+"eid" => 0,
+"seed" => 0,
+"crouch" => 0,
+);
 while($sock){
 	$time = microtime(true);
 	buffer();
@@ -196,6 +201,8 @@ while($sock){
 				console("[+] Login Request accepted");
 				console("[*] EID: ".$packet["eid"]);
 				console("[*] Seed: ".$packet["seed"]);
+				$ginfo["eid"] = $packet["eid"];
+				$ginfo["seed"] = $packet["seed"];
 				if($protocol>=17){
 					console("[*] Gamemode: ".($packet["mode"]==0 ? "survival":"creative"));
 					console("[*] Max players: ".$packet["max_players"]);
@@ -280,10 +287,19 @@ while($sock){
 		//$position_packet["x"] += arg("crazyness",0) == 0 ? mt_rand(-30,30)/70:mt_rand(-45,45)/70;
 		//$position_packet["z"] += arg("crazyness",0) == 0 ? mt_rand(-30,30)/70:mt_rand(-45,45)/70;
 		if(arg("crazyness","normal") == "mad"){
-			$position_packet["x"] += mt_rand(-45,45)/50;
-			$position_packet["z"] += mt_rand(-45,45)/50;
-			$position_packet["yaw"] = mt_rand(-360,360);
-			$position_packet["pitch"] = mt_rand(-360,360);
+			if(mt_rand(0,100)<=80){
+				$position_packet["x"] += mt_rand(-45,45)/50;
+				$position_packet["z"] += mt_rand(-45,45)/50;
+				$position_packet["yaw"] = mt_rand(-360,360);
+				$position_packet["pitch"] = mt_rand(-360,360);
+				write_packet("0d", $position_packet);
+			}else{			
+				write_packet("13", array(
+					"eid" => $ginfo["eid"],
+					"action" => ($crouch == false ? 1:2),
+				));
+				$crouch = $crouch == true ? false:true;
+			}
 		}else{
 			if(mt_rand(0,100)<=20){
 				$position_packet["x"] += mt_rand(-30,30)/70;
@@ -293,9 +309,8 @@ while($sock){
 			$position_packet["yaw"] %= 360;
 			$position_packet["pitch"] += mt_rand(-10,10);
 			$position_packet["pitch"] %= 55;
+			write_packet("0d", $position_packet);
 		}
-		//$position_packet["pitch"] = arg("crazyness",0) == 0 ? mt_rand(-30,30):mt_rand(-360,360);
-		write_packet("0d", $position_packet);
 		$do = true;
 	}
 	/*if($start+120<=$time){

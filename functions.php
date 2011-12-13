@@ -21,6 +21,9 @@ function read_byte($str, $signed = true){
 	}
 	return $b;
 }
+function write_byte($value){
+	return pack("c", $value);
+}
 
 function read_short($str){
 	list(,$unpacked) = unpack("n", substr($str, 0, 2));
@@ -33,6 +36,13 @@ function read_int($str){
 	if($unpacked >= pow(2, 31)) $unpacked -= pow(2, 32); // Convert unsigned int to signed int
 	return $unpacked;
 }
+function write_int($value){
+	if($value < 0){
+		$value += pow(2, 32); 
+	}
+	return pack("N", $value);
+}
+
 
 function read_float($str){
 	list(,$value) = (pack('d', 1) == "\77\360\0\0\0\0\0\0")?unpack('f', substr($str,0, 4)):unpack('f', strrev(substr($str,0, 4)));
@@ -501,6 +511,11 @@ function write_packet($pid,$data = array(), $raw = false){
 				write_float($data["yaw"]).
 				write_float($data["pitch"]).
 				($data["ground"] == true ? "\x01":"\x00");
+				break;
+			case "13":
+				$packet = "\x13".
+				write_int($data["eid"]).
+				write_byte($data["action"]);
 				break;
 			case "fe":
 				$packet = "\xfe";
