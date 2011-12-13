@@ -423,9 +423,36 @@ function parse_packet(){
 		case "14": //named entity spawn
 			$data["eid"] = $pdata[0];
 			$data["name"] = $pdata[1];
-			$data["x"] = $pdata[2];
-			$data["y"] = $pdata[3];
-			$data["z"] = $pdata[4];
+			$data["x"] = $pdata[2] / 32;
+			$data["y"] = $pdata[3] / 32;
+			$data["z"] = $pdata[4] / 32;
+			break;
+		case "1f":
+			$data["eid"] = $pdata[0];
+			$data["dX"] = $pdata[1] / 32;
+			$data["dY"] = $pdata[2] / 32;
+			$data["dZ"] = $pdata[3] / 32;		
+			break;
+		case "20":
+			$data["eid"] = $pdata[0];
+			$data["yaw"] = $pdata[1];
+			$data["pitch"] = $pdata[2];
+			break;
+		case "21":
+			$data["eid"] = $pdata[0];
+			$data["dX"] = $pdata[1] / 32;
+			$data["dY"] = $pdata[2] / 32;
+			$data["dZ"] = $pdata[3] / 32;
+			$data["yaw"] = $pdata[4];
+			$data["pitch"] = $pdata[5];			
+			break;
+		case "22":
+			$data["eid"] = $pdata[0];
+			$data["x"] = $pdata[1] / 32;
+			$data["y"] = $pdata[2] / 32;
+			$data["z"] = $pdata[3] / 32;
+			$data["yaw"] = $pdata[4];
+			$data["pitch"] = $pdata[5];				
 			break;
 		case "33":
 			if(arg("dump",false) != false){
@@ -484,6 +511,12 @@ function write_packet($pid,$data = array(), $raw = false){
 				$packet = "\x03".
 				string_pack(strlen($data["message"])).endian($data["message"]);
 				break;
+			case "07":
+				$packet = "\x07".
+				write_int($data["eid"]).
+				write_int($data["target"]).
+				($data["left"] == true ? "\x01":"\x00");
+				break;				
 			case "0a":
 				$packet = "\x0a".
 				($data["ground"] == true ? "\x01":"\x00");
@@ -512,6 +545,7 @@ function write_packet($pid,$data = array(), $raw = false){
 				write_float($data["pitch"]).
 				($data["ground"] == true ? "\x01":"\x00");
 				break;
+			
 			case "13":
 				$packet = "\x13".
 				write_int($data["eid"]).
