@@ -189,8 +189,13 @@ $moving = 0;
 $ginfo = array(
 "eid" => 0,
 "seed" => 0,
+"dimension" => 0,
+"difficulty" => 0,
+"mode" => 0,
+"height" => 128,
 "crouch" => 0,
 "jump" => 0,
+"health" => 20,
 "owner" => array(
 	"name" => arg("owner", "shoghicp"),
 	"eid" => 0,
@@ -216,6 +221,10 @@ while($sock){
 				console("[*] Seed: ".$packet["seed"]);
 				$ginfo["eid"] = $packet["eid"];
 				$ginfo["seed"] = $packet["seed"];
+				$ginfo["dimension"] = $packet["dimension"];
+				$ginfo["difficulty"] = $packet["difficulty"];
+				$ginfo["mode"] = $packet["mode"];
+				$ginfo["height"] = $packet["height"];
 				if($protocol>=17){
 					console("[*] Gamemode: ".($packet["mode"]==0 ? "survival":"creative"));
 					console("[*] Max players: ".$packet["max_players"]);
@@ -233,17 +242,44 @@ while($sock){
 						}
 					}
 					$packet["message"] = str_replace("\xff", "", $packet["message"]);
-					console($packet["message"]);
+					if($packet["message"]{0} == "["){
+						$sender = substr($packet["message"],1,strpos($packet["message"], "->")-2);
+						$packet["message"] = substr($packet["message"],strpos($packet["message"], "]")+2);
+						if($sender == $ginfo["owner"]["name"]){
+							if($packet["message"] == "follow"){
+								$arguments["commands"]["follow"] = $arguments["commands"]["follow"] == false ? true:false;
+							}else{
+								write_packet("03", array(
+									"message" => $packet["message"],
+								));
+							}
+							console("me: ".$packet["message"]);
+						}else{
+							console("[+] $sender: ".$packet["message"]);
+						}
+					}else{
+						console($packet["message"]);
+					}
 				}
 				break;
 				
 			case "04":
 				console("[*] Time: ".((intval($packet['time']/1000+6) % 24)).':'.str_pad(intval(($packet['time']/1000-floor($packet['time']/1000))*60),2,"0",STR_PAD_LEFT).', '.(($packet['time'] > 23100 or $packet['time'] < 12900) ? "day":"night")."   \r", false, false);
 				break;
+			case "08":
+				if($ginfo["health"] != $packet["health"]){
+					console("[*] Health: ".$packet["health"]);
+				}
+				$ginfo["health"] = $packet["health"];
+				if($ginfo["health"]<=0){
+					write_packet("09", $ginfo);
+					console("[-] Death and respawn");
+				}
+				break;
 			case "0d":
 				if(!in_array("position",$hide)){
 					console("[+] Got position: (".$packet["x"].",".$packet["y"].",".$packet["z"].")");
-				}					
+				}
 				if($moving == 0 or $moving >= 2){
 					write_packet("0d",$packet);
 					$position_packet = $packet;
@@ -331,12 +367,12 @@ while($sock){
 				}else{
 					$ginfo["jump"] = 1;
 				}
-				$position_packet["x"] += ($position_packet["x"] - $ginfo["owner"]["x"]>0 ? -0.2:0.2);
-				$position_packet["y"] = (sqrt(pow($xD,2) + pow($zD,2)) <= 1.5) ? $ginfo["owner"]["y"]:$position_packet["y"]/* + $ginfo["jump"]*/;
+				$position_packet["x"] += ($position_packet["x"] - $ginfo["owner"]["x"]>0 ? -0.1:0.1);
+				$position_packet["y"] = (sqrt(pow($xD,2) + pow($zD,2)) <= 3) ? $ginfo["owner"]["y"]:$position_packet["y"]/* + $ginfo["jump"]*/;
 				$position_packet["stance"] = $position_packet["y"] + 1.6;
 				$position_packet["yaw"] = -rad2deg(atan(($position_packet["x"] - $ginfo["owner"]["x"])/($position_packet["z"] - $ginfo["owner"]["z"])));
 				$position_packet["pitch"] = mt_rand(-10,10);
-				$position_packet["z"] += ($position_packet["z"] - $ginfo["owner"]["z"]>0 ? -0.2:0.2);
+				$position_packet["z"] += ($position_packet["z"] - $ginfo["owner"]["z"]>0 ? -0.1:0.1);
 				//$position_packet["ground"] = $ginfo["jump"] == 1 ? false:true;
 				write_packet("0d", $position_packet);
 			}else{
@@ -353,11 +389,17 @@ while($sock){
 		if($moving == 0){
 			if(arg("crazyness","normal") == "mad"){
 				if(mt_rand(0,100)<=80){
-					$position_packet["x"] += mt_rand(-45,45)/50;
-					$position_packet["z"] += mt_rand(-45,45)/50;
+					if(mt_rand(0,100)<=40){
+						$position_packet["x"] += mt_rand(-30,30)/210;
+						$position_packet["z"] += mt_rand(-30,30)/210;
+					}
 					$position_packet["yaw"] = mt_rand(-360,360);
 					$position_packet["pitch"] = mt_rand(-360,360);
 					write_packet("0d", $position_packet);
+					write_packet("12", array(
+						"eid" => $ginfo["eid"],
+						"animation" => 1,
+					));
 				}else{			
 					write_packet("13", array(
 						"eid" => $ginfo["eid"],
@@ -367,8 +409,8 @@ while($sock){
 				}
 			}else{
 				if(mt_rand(0,100)<=20){
-					$position_packet["x"] += mt_rand(-30,30)/70;
-					$position_packet["z"] += mt_rand(-30,30)/70;
+					$position_packet["x"] += mt_rand(-30,30)/210;
+					$position_packet["z"] += mt_rand(-30,30)/210;
 				}
 				$position_packet["yaw"] += mt_rand(-25,25);
 				$position_packet["yaw"] %= 360;
@@ -386,7 +428,7 @@ while($sock){
 		die();
 	}*/
 	if($do){
-		$next = $time+0.2;
+		$next = $time+0.05;
 	}
 	
 }

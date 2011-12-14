@@ -30,6 +30,12 @@ function read_short($str){
 	if($unpacked >= pow(2, 15)) $unpacked -= pow(2, 16); // Convert unsigned short to signed short.
 	return $unpacked;
 }
+function write_short($value){
+	if($value < 0){
+		$value += pow(2, 16); 
+	}
+	return pack("n", $value);
+}
 
 function read_int($str){
 	list(,$unpacked) = unpack("N", substr($str, 0, 4));
@@ -162,14 +168,14 @@ function parse_packet(){
 	$raw = array();
 	$offset = 1;
 	if(!isset($pstruct[$pid])){
-		write_packet("ff", array("message" => "Unknown packet ID ".$pid));
+		write_packet("ff", array("message" => "Bad packet id ".$pid));
 		if(arg("log", false) != false){
-			$p = "==".time()."==> ERROR Unknown Packet $pid :".PHP_EOL;
+			$p = "==".time()."==> ERROR Bad packet id $pid :".PHP_EOL;
 			$p .= hexdump(substr($buffer,0,64), false, false, true);
 			$p .= PHP_EOL . "--------------- (64 byte extract) ----------" .PHP_EOL .PHP_EOL;
 			file_put_contents($path."packets.log", $p, FILE_APPEND);
 		}
-		return array("pid" => "ff", "message" => "Unknown packet ID ".$pid);
+		return array("pid" => "ff", "message" => "Bad packet id ".$pid);
 	}
 	$field = 0;
 	$continue = true;
@@ -411,6 +417,11 @@ function parse_packet(){
 			$data["y"] = $pdata[1];
 			$data["z"] = $pdata[2];
 			break;
+		case "08":
+			$data["health"] = $pdata[0];
+			$data["food"] = $pdata[1];
+			$data["saturation"] = $pdata[1];
+			break;
 		case "0d":
 			$data["x"] = $pdata[0];
 			$data["stance"] = $pdata[1];
@@ -516,7 +527,15 @@ function write_packet($pid,$data = array(), $raw = false){
 				write_int($data["eid"]).
 				write_int($data["target"]).
 				($data["left"] == true ? "\x01":"\x00");
-				break;				
+				break;
+			case "09":
+				$packet = "\x09".
+				write_byte($data["dimension"]).
+				write_byte($data["difficulty"]).
+				write_byte($data["mode"]).
+				write_short($data["height"]).
+				write_long($data["seed"]);
+				break;
 			case "0a":
 				$packet = "\x0a".
 				($data["ground"] == true ? "\x01":"\x00");
@@ -545,7 +564,11 @@ function write_packet($pid,$data = array(), $raw = false){
 				write_float($data["pitch"]).
 				($data["ground"] == true ? "\x01":"\x00");
 				break;
-			
+			case "12":
+				$packet = "\x12".
+				write_int($data["eid"]).
+				write_byte($data["animation"]);
+				break;
 			case "13":
 				$packet = "\x13".
 				write_int($data["eid"]).

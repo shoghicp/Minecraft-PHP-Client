@@ -53,6 +53,14 @@ $pstruct = array(
 		"float",
 	),
 	
+	"09" => array(
+		"byte",
+		"byte",
+		"byte",
+		"short",
+		"long",
+	),
+	
 	"0d" => array(
 		"double",
 		"double",
@@ -311,6 +319,10 @@ $pstruct = array(
 		"byte",
 		"byte",
 		"string",
+		"byte",
+	),
+	
+	"65" => array(
 		"byte",
 	),
 	
