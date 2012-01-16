@@ -3,6 +3,22 @@
 		Modifiers of structure
 
 	*/
+	if($protocol >= 23){
+		unset($pstruct["1b"]);
+	}
+	
+	if($protocol <= 22){
+		$pstruct["01"] = array(
+			"int",
+			"string",
+			"long",
+			"int",
+			"byte",
+			"byte",
+			"ubyte",
+			"ubyte",
+		);	
+	}
 	
 	if($protocol <= 17){
 		$pstruct["2b"] = array(

@@ -15,6 +15,7 @@ $pstruct = array(
 		"int",
 		"string",
 		"long",
+		"string",
 		"int",
 		"byte",
 		"byte",
@@ -355,6 +356,11 @@ $pstruct = array(
 		"slotData",
 	),
 	
+	"6c" => array(
+		"byte",
+		
+	),
+	
 	"82" => array(
 		"int",
 		"short",
@@ -381,6 +387,12 @@ $pstruct = array(
 		"string",
 		"byte",
 		"short",
+	),
+	
+	"fa" => array(
+		"string",
+		"short",
+		"byteArray",
 	),
 	
 	"fe" => array(

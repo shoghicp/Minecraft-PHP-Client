@@ -2,29 +2,34 @@
 set_time_limit(0);
 if(!defined('CLIENT_LOADED')){
 	$path = dirname(__FILE__)."/";
-	include("functions.php");
+	set_include_path($path);
+	include_once("functions.php");
 	include("pstruct.php");
+	include_once("packets.php");
+	include_once("command.php");
+	include_once("dynmap.php");
 	//include("nbt.class.php");
 	//ini_set("display_errors", 0);
-	define('CLIENT_LOADED', true);
+	define("VERSION", "0.4_1 Alpha");
 	define("MAX_BUFFER_BYTES", 1024 * 1024 * 16);
 	ini_set("memory_limit", "32M");
-}
+
 
 $versions = array(
+	"1.1.0" => 23,
 	"1.0.1" => 22,
 	"1.0.0" => 22,
-	"1.8.1" => 17,
-	"1.8" => 17,
-	"1.7.3" => 14,
-	"1.7.2" => 14,
-	"1.7_01" => 14,
-	"1.7" => 14,
-	"1.6.6" => 12,
-	"1.6" => 12,
+	"b1.8.1" => 17,
+	"b1.8" => 17,
+	"b1.7.3" => 14,
+	"b1.7.2" => 14,
+	"b1.7_01" => 14,
+	"b1.7" => 14,
+	"b1.6.6" => 12,
+	"b1.6" => 12,
 );
 
-$lastver = "1.0.1";
+$lastver = "1.1.0";
 
 
 
@@ -44,20 +49,18 @@ Parameters:
 \tpassword => password to use in minecraft.net, if PREMIUM
 \tsecure => use HTTPS to connect to minecraft.net
 \tdump => dump map chunks (experimental! [no crash])
-\tlog => write a log in packets.log and console.log
+\tlog => write a log in packets.log and console.log, or if you specify an option, only one
 \tping => ping (packet 0xFE) a server, and returns info
 \thide => hides elements here from console, separated by a comma (sign, chat, nspawn, state, position)
 \tcrazyness => moves around doing things (moves head) (values: mad, normal)
 \towner => set owner (follow, commands)
-\tfollow => follow owner
 
 Example:
-php {$argv[0]} --server=127.0.0.1 --username=shoghicp --version=1.8.1 --hide=sign,chat
+php {$argv[0]} --server=127.0.0.1 --username=shoghicp --version=b1.8.1 --hide=sign,chat
 
 USAGE;
 die();
 }
-
 $server		= arg("server", "127.0.0.1");
 $port		= arg("port", "25565");
 $username	= arg("username", "Player");
@@ -65,14 +68,23 @@ $password	= arg("password", "");
 $secure		= arg("secure", false);
 $version	= arg("version", $lastver);
 if(arg("log", false) != false){
-	file_put_contents($path."packets.log", "");
-	file_put_contents($path."console.log", "");
+	if(arg("log", false) == "console"){
+		file_put_contents($path."console.log", "");	
+	}elseif(arg("log", false) == "packets"){
+		file_put_contents($path."packets.log", "");
+	}else{
+		file_put_contents($path."packets.log", "");
+		file_put_contents($path."console.log", "");	
+	}
 }
 $protocol = $versions[$version];
 $colorchar = "\xa7";
 
+}
+
 include("pstruct_modifier.php");
 
+if(!defined("CLIENT_LOADED")){
 
 $logged_in = false;
 $connected = true;
@@ -86,6 +98,8 @@ echo <<<INFO
 
 
 INFO;
+
+}
 
 $sock = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
 
@@ -130,36 +144,38 @@ if($packet["server_id"] != "-" and $packet["server_id"] != "+"){
 	if($packet["server_id"] == "" or strpos($packet["server_id"], "&") !== false){
 		console("[!] NAME SPOOF DETECTED");
 	}
-	if($secure !== false){
-		$proto = "https";
-		console("[+] Using secure HTTPS connection");
-	}else{
-		$proto = "http";
-	}
-	
-	$response = curl_get($proto."://login.minecraft.net/?user=".$username."&password=".$password."&version=12");
-	switch($response){
-		case 'Bad Login':
-			console("[-] Bad login");
-			die();
-			break;
-		case "Old Version":
-			console("[-] Old Version");
-			die();
-			break;
-		default:
-			$content = explode(":",$response);
-			if(!is_array($content)){
-				console("[-] Unknown Login Error: \"".$response."\"");
+	if(!defined("CLIENT_LOADED")){
+		if($secure !== false){
+			$proto = "https";
+			console("[+] Using secure HTTPS connection");
+		}else{
+			$proto = "http";
+		}
+		
+		$response = curl_get($proto."://login.minecraft.net/?user=".$username."&password=".$password."&version=12");
+		switch($response){
+			case 'Bad Login':
+				console("[-] Bad login");
 				die();
-			}
-			$login["last_version"] = $content[0];
-			$login["download_ticket"] = $content[1];
-			$login["username"] = $content[2];
-			$username = $content[2];
-			$login["session_id"] = $content[3];
-			console("[+] Logged into minecraft.net". PHP_EOL);
-			break;
+				break;
+			case "Old Version":
+				console("[-] Old Version");
+				die();
+				break;
+			default:
+				$content = explode(":",$response);
+				if(!is_array($content)){
+					console("[-] Unknown Login Error: \"".$response."\"");
+					die();
+				}
+				$login["last_version"] = $content[0];
+				$login["download_ticket"] = $content[1];
+				$login["username"] = $content[2];
+				$username = $content[2];
+				$login["session_id"] = $content[3];
+				console("[+] Logged into minecraft.net". PHP_EOL);
+				break;
+		}
 	}
 	$res = curl_get("http://session.minecraft.net/game/joinserver.jsp?user=".$username."&sessionId=".$login["session_id"]."&serverId=".$packet["server_id"]); //User check
 	if($res != "OK"){
@@ -177,7 +193,7 @@ write_packet("01",array(
 ));
 
 socket_set_nonblock($sock);
-
+define('CLIENT_LOADED', true);
 /*
 ---------- AUTH FINALIZED --------------
 */
@@ -187,26 +203,42 @@ $next = 0;
 $start = $next;
 $moving = 0;
 $ginfo = array(
-"eid" => 0,
-"seed" => 0,
-"dimension" => 0,
-"difficulty" => 0,
-"mode" => 0,
-"height" => 128,
-"crouch" => 0,
-"jump" => 0,
-"health" => 20,
-"owner" => array(
-	"name" => arg("owner", "shoghicp"),
 	"eid" => 0,
-	"x" => 0,
-	"y" => 0,
-	"z" => 0,
-),
+	"seed" => 0,
+	"dimension" => 0,
+	"difficulty" => 0,
+	"level_type" => "DEFAULT",
+	"mode" => 0,
+	"height" => 128,
+	"crouch" => 0,
+	"jump" => 0,
+	"health" => 20,
+	"time" => 0,
+	"follow" => 0,
+	"attack" => false,
+	"aura" => false,
+	"owner" => array(
+		"name" => arg("owner", "shoghicp"),
+	),
 );
+$entities = array();
+$players = array();
+$permissions = array(
+	$ginfo["owner"]["name"] => 3,
+	$username => 3,
+	"susoboiro" => 2,
+	"LoscoJones" => 2,
+	"milodescorpio" => 2,
+	"Duendek86" => 2,
+	"kopron" => 2,
+	"creik" => 2,
+	"Sir_Pinkata",
+);
+$recorder = array("mode" => "", "name" => "", "positions" => "");
+$restart = false;
 
 
-while($sock){
+while($sock and $restart == false){
 	$time = microtime(true);
 	buffer();
 	if(strlen($buffer) > 0){	
@@ -221,6 +253,7 @@ while($sock){
 				console("[*] Seed: ".$packet["seed"]);
 				$ginfo["eid"] = $packet["eid"];
 				$ginfo["seed"] = $packet["seed"];
+				$ginfo["level_type"] = $packet["level_type"];
 				$ginfo["dimension"] = $packet["dimension"];
 				$ginfo["difficulty"] = $packet["difficulty"];
 				$ginfo["mode"] = $packet["mode"];
@@ -232,39 +265,18 @@ while($sock){
 				$logged_in = true;
 				break;
 			case "03":
-				if(!in_array("chat",$hide)){
-					$len = strlen($packet["message"]);
-					//Clean packet for console
-					for($i=0;$i<$len;++$i){
-						if($packet["message"]{$i} == $colorchar){
-							$packet["message"]{$i} = "\xff";
-							$packet["message"]{$i+1} = "\xff";
-						}
-					}
-					$packet["message"] = str_replace("\xff", "", $packet["message"]);
-					if($packet["message"]{0} == "["){
-						$sender = substr($packet["message"],1,strpos($packet["message"], "->")-2);
-						$packet["message"] = substr($packet["message"],strpos($packet["message"], "]")+2);
-						if($sender == $ginfo["owner"]["name"]){
-							if($packet["message"] == "follow"){
-								$arguments["commands"]["follow"] = $arguments["commands"]["follow"] == false ? true:false;
-							}else{
-								write_packet("03", array(
-									"message" => $packet["message"],
-								));
-							}
-							console("me: ".$packet["message"]);
-						}else{
-							console("[+] $sender: ".$packet["message"]);
-						}
-					}else{
-						console($packet["message"]);
-					}
+				$res = Packet03Chat($packet);
+				if(!in_array("chat",$hide) and $res != false){
+					console($res);
 				}
 				break;
 				
 			case "04":
-				console("[*] Time: ".((intval($packet['time']/1000+6) % 24)).':'.str_pad(intval(($packet['time']/1000-floor($packet['time']/1000))*60),2,"0",STR_PAD_LEFT).', '.(($packet['time'] > 23100 or $packet['time'] < 12900) ? "day":"night")."   \r", false, false);
+				$packet['time'] %= 24000;
+				$ginfo["time"] = $packet['time'];
+				if(!in_array("time",$hide)){
+					console("[*] Time: ".((intval($packet['time']/1000+6) % 24)).':'.str_pad(intval(($packet['time']/1000-floor($packet['time']/1000))*60),2,"0",STR_PAD_LEFT).', '.(($packet['time'] > 23100 or $packet['time'] < 12900) ? "day":"night")."   \r", false, false);
+				}
 				break;
 			case "08":
 				if($ginfo["health"] != $packet["health"]){
@@ -280,6 +292,12 @@ while($sock){
 				if(!in_array("position",$hide)){
 					console("[+] Got position: (".$packet["x"].",".$packet["y"].",".$packet["z"].")");
 				}
+				/*if(!$position_packet and arg("spout", false) != false){
+					write_packet("12", array(
+						"eid" => -42,
+						"animation" => 1,
+					));
+				}*/
 				if($moving == 0 or $moving >= 2){
 					write_packet("0d",$packet);
 					$position_packet = $packet;
@@ -292,27 +310,52 @@ while($sock){
 				if(!in_array("nspawn",$hide)){
 					console("[+] Player \"".$packet["name"]."\" (EID: ".$packet["eid"].") spawned at (".$packet["x"].",".$packet["y"].",".$packet["z"].")");
 				}
-				if($packet["name"] == $ginfo["owner"]["name"]){
-					$ginfo["owner"]["eid"] = $packet["eid"];
-					$ginfo["owner"]["x"] = $packet["x"];
-					$ginfo["owner"]["y"] = $packet["y"];
-					$ginfo["owner"]["z"] = $packet["z"];
+				if(isset($permissions[$packet["name"]]) and $permissions[$packet["name"]] > 1){
+					if($ginfo["owner"]["name"] == $packet["name"]){
+						$ginfo["owner"]["eid"] = $packet["eid"];
+					}
+					privateMessage("Hola ".$packet["name"].". Eres ".($permissions[$packet["name"]] == 2 ? "moderador":"administrador")." de ".$username, $packet["name"]);
+				}
+				$players[$packet["name"]] = $packet["eid"];			
+			case "17":
+			case "18":
+				$entities[$packet["eid"]]["type"] = $packet["type"];
+				$entities[$packet["eid"]]["x"] = $packet["x"];
+				$entities[$packet["eid"]]["y"] = $packet["y"];
+				$entities[$packet["eid"]]["z"] = $packet["z"];
+				break;
+			case "1d":
+				unset($entities[$packet["eid"]]);
+				if(in_array($packet["eid"], $players)){
+					foreach($players as $name => $eid){
+						if($eid == $packet["eid"]){
+							unset($players[$name]);
+							break;
+						}
+					}
 				}
 				break;
 			case "1f":
 			case "21":
-				if($packet["eid"] == $ginfo["owner"]["eid"]){
-					$ginfo["owner"]["x"] += $packet["dX"];
-					$ginfo["owner"]["y"] += $packet["dY"];
-					$ginfo["owner"]["z"] += $packet["dZ"];				
-				}
+				$entities[$packet["eid"]]["x"] += $packet["dX"];
+				$entities[$packet["eid"]]["y"] += $packet["dY"];
+				$entities[$packet["eid"]]["z"] += $packet["dZ"];				
+
 				break;
 			case "22":
-				if($packet["eid"] == $ginfo["owner"]["eid"]){
-					$ginfo["owner"]["x"] = $packet["x"];
-					$ginfo["owner"]["y"] = $packet["y"];
-					$ginfo["owner"]["z"] = $packet["z"];				
-				}			
+				$entities[$packet["eid"]]["x"] = $packet["x"];
+				$entities[$packet["eid"]]["y"] = $packet["y"];
+				$entities[$packet["eid"]]["z"] = $packet["z"];					
+				break;
+			case "33":
+				if(arg("dump",false) != false){
+					if($packet["xS"] == 15 and $packet["yS"] == 127 and $packet["zS"] == 15){
+						$fname = "world/region/r.". ($packet["x"] >> 5).".".($packet["z"] >> 5).".mcr";
+						@mkdir($path."world/region/",0777,true);
+						file_put_contents($path.$fname,gzinflate(substr($packet["chunk"],2)));
+						file_put_contents($path.$fname,$packet["chunk"]);
+					}
+				}
 				break;
 			case "46";
 				if(!in_array("state",$hide)){
@@ -356,67 +399,139 @@ while($sock){
 		));
 		$do = true;
 	}*/
-	if($next <= $time and $position_packet !== false){
-		if(arg("follow",false) != false and $ginfo["owner"]["eid"] > 0){
-			$xD = abs($position_packet["x"] - $ginfo["owner"]["x"]);
-			$yD = abs($position_packet["y"] - $ginfo["owner"]["y"]);
-			$zD = abs($position_packet["z"] - $ginfo["owner"]["z"]);
-			if(sqrt(pow($xD,2) + pow($zD,2)) <= 16 and sqrt(pow($xD,2) + pow($zD,2)) >= 2 and $yD <= 3 and $moving <= 2){
-				if($ginfo["jump"] == 1){
-					$ginfo["jump"] = 0;
-				}else{
-					$ginfo["jump"] = 1;
-				}
-				$position_packet["x"] += ($position_packet["x"] - $ginfo["owner"]["x"]>0 ? -0.1:0.1);
-				$position_packet["y"] = (sqrt(pow($xD,2) + pow($zD,2)) <= 3) ? $ginfo["owner"]["y"]:$position_packet["y"]/* + $ginfo["jump"]*/;
-				$position_packet["stance"] = $position_packet["y"] + 1.6;
-				$position_packet["yaw"] = -rad2deg(atan(($position_packet["x"] - $ginfo["owner"]["x"])/($position_packet["z"] - $ginfo["owner"]["z"])));
-				$position_packet["pitch"] = mt_rand(-10,10);
-				$position_packet["z"] += ($position_packet["z"] - $ginfo["owner"]["z"]>0 ? -0.1:0.1);
-				//$position_packet["ground"] = $ginfo["jump"] == 1 ? false:true;
-				write_packet("0d", $position_packet);
-			}else{
-				$moving = 0;
+	if($next <= $time and $time%32==0){
+		foreach(DynMapCoords() as $player){
+			if(!isset($players[$player["name"]]) or $players[$player["name"]] == md5($player["name"])){
+				$players[$player["name"]] = md5($player["name"]);
+				$entities[md5($player["name"])] = $player;
 			}
-			/*if(sqrt(pow($xD,2) + pow($zD,2)) <= 4){
+		}
+	}
+	if($next <= $time){
+		$input = file_get_contents("chat.input");file_put_contents("chat.input", "");
+		foreach(explode("\n", $input) as $in){
+			$in = trim($in);
+			if($in == ""){
+				continue;
+			}
+			Message($in);
+			console("[+] INPUT: ".$in);
+		}
+	}
+	if($ginfo["aura"] == true and $position_packet !== false){
+		$att = false;
+		foreach($entities as $eid => $ent){
+			$xD = abs($position_packet["x"] - $ent["x"]);
+			$yD = abs($position_packet["y"] - $ent["y"]);
+			$zD = abs($position_packet["z"] - $ent["z"]);
+			if(pow(pow($xD,2) + pow($yD,2) + pow($zD,2),1/3) <= 7){
 				write_packet("07", array(
 					"eid" => $ginfo["eid"],
-					"target" => $ginfo["owner"]["eid"],
+					"target" => $eid,
 					"left" => true,
 				));
-			}*/
+				$att = true;
+			}
 		}
-		if($moving == 0){
-			if(arg("crazyness","normal") == "mad"){
-				if(mt_rand(0,100)<=80){
-					if(mt_rand(0,100)<=40){
-						$position_packet["x"] += mt_rand(-30,30)/210;
-						$position_packet["z"] += mt_rand(-30,30)/210;
-					}
-					$position_packet["yaw"] = mt_rand(-360,360);
-					$position_packet["pitch"] = mt_rand(-360,360);
-					write_packet("0d", $position_packet);
+		if($att == true){
+			write_packet("12", array(
+				"eid" => $ginfo["eid"],
+				"animation" => 1,
+			));
+		}
+	}
+	
+	if($next <= $time and $position_packet !== false){
+		if($recorder["mode"] == "record"){
+			$recorder["positions"][] = $entities[$ginfo["follow"]];
+		}
+		if($recorder["mode"] == "play"){
+			if(isset($recorder["positions"][$recorder["name"]])){
+				$recorder["positions"][$recorder["name"]]["stance"] = $recorder["positions"][$recorder["name"]]["y"] + 1.6;
+				$recorder["positions"][$recorder["name"]]["ground"] = true;
+				write_packet("0b", $recorder["positions"][$recorder["name"]]);
+				++$recorder["name"];
+			}else{
+				$recorder["mode"] = "";
+			}
+		}else{
+			if($ginfo["follow"] > 0){
+				$xD = abs($position_packet["x"] - $entities[$ginfo["follow"]]["x"]);
+				$yD = abs($position_packet["y"] - $entities[$ginfo["follow"]]["y"]);
+				$zD = abs($position_packet["z"] - $entities[$ginfo["follow"]]["z"]);
+				if($ginfo["attack"] == true and pow(pow($xD,2) + pow($yD,2) + pow($zD,2),1/3) <= 7){
+					write_packet("07", array(
+						"eid" => $ginfo["eid"],
+						"target" => $ginfo["follow"],
+						"left" => true,
+					));
 					write_packet("12", array(
 						"eid" => $ginfo["eid"],
 						"animation" => 1,
 					));
-				}else{			
-					write_packet("13", array(
+				}
+				if(sqrt(pow($xD,2) + pow($zD,2)) <= 32 and sqrt(pow($xD,2) + pow($zD,2)) >= 2 and $moving <= 2){
+					if($ginfo["jump"] > 0){
+						$ginfo["jump"] = -1;
+					}else{
+						$ginfo["jump"] = 1;
+					}
+					$position_packet["x"] += ($position_packet["x"] - $entities[$ginfo["follow"]]["x"]>0 ? -0.25:0.25);
+					$position_packet["y"] = $position_packet["y"] + $ginfo["jump"];
+					$position_packet["stance"] = $position_packet["y"] + 1.6;
+					$position_packet["yaw"] = -rad2deg(atan(($position_packet["x"] - $entities[$ginfo["follow"]]["x"])/($position_packet["z"] - $entities[$ginfo["follow"]]["z"])));
+					$position_packet["pitch"] = mt_rand(-10,10);
+					$position_packet["z"] += ($position_packet["z"] - $entities[$ginfo["follow"]]["z"]>0 ? -0.25:0.25);
+					$position_packet["ground"] = $ginfo["jump"] > 0 ? false:true;
+					write_packet("0d", $position_packet);
+				}else{
+					$moving = 0;
+				}
+				/*if(sqrt(pow($xD,2) + pow($zD,2)) <= 4){
+					write_packet("07", array(
 						"eid" => $ginfo["eid"],
-						"action" => ($crouch == false ? 1:2),
+						"target" => $ginfo["owner"]["eid"],
+						"left" => true,
 					));
-					$crouch = $crouch == true ? false:true;
+				}*/
+			}
+			if($moving == 0){
+				if(arg("crazyness","normal") == "mad"){
+					if(mt_rand(0,100)<=80){
+						if(mt_rand(0,100)<=40){
+							$position_packet["x"] += mt_rand(-30,30)/210;
+							$position_packet["z"] += mt_rand(-30,30)/210;
+						}
+						$position_packet["yaw"] = mt_rand(-360,360);
+						$position_packet["pitch"] = mt_rand(-360,360);
+						write_packet("0d", $position_packet);
+						write_packet("12", array(
+							"eid" => $ginfo["eid"],
+							"animation" => 1,
+						));
+					}else{			
+						write_packet("13", array(
+							"eid" => $ginfo["eid"],
+							"action" => ($crouch == false ? 1:2),
+						));
+						$crouch = $crouch == true ? false:true;
+					}
+				}elseif(arg("crazyness","normal") == "exorcist"){
+						$position_packet["yaw"] = 0;
+						$position_packet["pitch"] += 6;
+						$position_packet["pitch"] %= 360;
+						write_packet("0d", $position_packet);
+				}else{
+					if(mt_rand(0,100)<=20){
+						$position_packet["x"] += mt_rand(-30,30)/210;
+						$position_packet["z"] += mt_rand(-30,30)/210;
+					}
+					$position_packet["yaw"] += mt_rand(-25,25);
+					$position_packet["yaw"] %= 360;
+					$position_packet["pitch"] += mt_rand(-10,10);
+					$position_packet["pitch"] %= 55;
+					write_packet("0d", $position_packet);
 				}
-			}else{
-				if(mt_rand(0,100)<=20){
-					$position_packet["x"] += mt_rand(-30,30)/210;
-					$position_packet["z"] += mt_rand(-30,30)/210;
-				}
-				$position_packet["yaw"] += mt_rand(-25,25);
-				$position_packet["yaw"] %= 360;
-				$position_packet["pitch"] += mt_rand(-10,10);
-				$position_packet["pitch"] %= 55;
-				write_packet("0d", $position_packet);
 			}
 		}
 		$do = true;
@@ -430,7 +545,14 @@ while($sock){
 	if($do){
 		$next = $time+0.05;
 	}
-	
+	usleep(10);
 }
 socket_close($sock);
+if($restart == true){
+	console("[+] Restarting...");
+	$buffer = "";
+	sleep(8);
+	include("client.php");
+}
+die();
 ?>

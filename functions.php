@@ -4,7 +4,7 @@
 function console($message, $EOL = true, $log = true){
 	global $path;
 	$message .= $EOL == true ? PHP_EOL:"";
-	if($log and arg("log", false) != false){
+	if($log and arg("log", false) != false and arg("log", false) != "packets"){
 		file_put_contents($path."console.log", $message, FILE_APPEND);
 	}
 	echo $message;
@@ -12,6 +12,10 @@ function console($message, $EOL = true, $log = true){
 
 function string_pack($len){
 	return "\00".pack("H*",str_pad(dechex($len),2,"0",STR_PAD_LEFT));
+}
+
+function write_string($str){
+	return write_short(strlen($str)).endian($str);
 }
 
 function read_byte($str, $signed = true){
@@ -169,7 +173,7 @@ function parse_packet(){
 	$offset = 1;
 	if(!isset($pstruct[$pid])){
 		write_packet("ff", array("message" => "Bad packet id ".$pid));
-		if(arg("log", false) != false){
+		if(arg("log", false) != false and arg("log", false) != "console"){
 			$p = "==".time()."==> ERROR Bad packet id $pid :".PHP_EOL;
 			$p .= hexdump(substr($buffer,0,64), false, false, true);
 			$p .= PHP_EOL . "--------------- (64 byte extract) ----------" .PHP_EOL .PHP_EOL;
@@ -244,7 +248,7 @@ function parse_packet(){
 				$pdata[] = $r;
 				break;
 			case "byteArray":
-				$len = $pdata[2];
+				$len = $pdata[count($pdata)-1];
 				$pdata[] = substr($buffer,$offset,$len);
 				$offset += $len;
 				break;
@@ -259,9 +263,7 @@ function parse_packet(){
 					$first = true;						
 					$r = substr($buffer, $offset, $len);
 				}
-				if(arg("dump", false) != false){
-					$pdata[] = $r;
-				}
+				$pdata[] = $r;
 				$offset += $len;
 				break;
 			case "multiblockArray":
@@ -286,7 +288,7 @@ function parse_packet(){
 				for($i=0;$i<$scount;++$i){
 					$id = read_short(substr($buffer,$offset,2));
 					$offset += 2;
-					if($id != -1){						
+					if($id != -1){
 						$count = read_byte($buffer{$offset});
 						$offset += 1;
 						$meta = read_short(substr($buffer,$offset,2));
@@ -316,8 +318,10 @@ function parse_packet(){
 						if(in_array($id, $enchantable_items)){
 							$len = read_short(substr($buffer,$offset,2));
 							$offset += 2;
-							$arr = substr($buffer, $offset, $len);
-							$offset += $len;
+							if($len > -1){
+								$arr = substr($buffer, $offset, $len);
+								$offset += $len;
+							}
 						}
 					}
 				}
@@ -378,7 +382,7 @@ function parse_packet(){
 		}
 		++$field;
 	}
-	if(arg("log", false) != false){
+	if(arg("log", false) != false and arg("log", false) != "console"){
 		$p = "==".time()."==> RECEIVED Packet $pid, lenght $offset :".PHP_EOL;
 		$p .= hexdump(substr($buffer,0,$offset), false, false, true);
 		$p .= PHP_EOL . "--------------- END ----------" .PHP_EOL .PHP_EOL;
@@ -394,14 +398,20 @@ function parse_packet(){
 		case "01": //Login
 			$data["eid"] = $pdata[0];
 			$data["seed"] = $pdata[2];
-			$data["mode"] = $pdata[3];
-			$data["dimension"] = $pdata[4];
-			$data["difficulty"] = $pdata[5];
-			$data["height"] = $pdata[6];
-			$data["max_players"] = $pdata[7];
-			/*if(arg("dump",false)){
-				print_r();
-			}*/
+			if($protocol >= 23){
+				$data["level_type"] = $pdata[3];
+				$data["mode"] = $pdata[4];
+				$data["dimension"] = $pdata[5];
+				$data["difficulty"] = $pdata[6];
+				$data["height"] = $pdata[7];
+				$data["max_players"] = $pdata[8];
+			}else{
+				$data["mode"] = $pdata[3];
+				$data["dimension"] = $pdata[4];
+				$data["difficulty"] = $pdata[5];
+				$data["height"] = $pdata[6];
+				$data["max_players"] = $pdata[7];
+			}
 			break;
 		case "02": //Handshake
 			$data["server_id"] = $pdata[0];
@@ -431,18 +441,36 @@ function parse_packet(){
 			$data["pitch"] = $pdata[5];
 			$data["ground"] = $pdata[6];
 			break;
-		case "14": //named entity spawn
+		case "14": //named entity spawn		
 			$data["eid"] = $pdata[0];
 			$data["name"] = $pdata[1];
+			$data["type"] = 100;
 			$data["x"] = $pdata[2] / 32;
 			$data["y"] = $pdata[3] / 32;
 			$data["z"] = $pdata[4] / 32;
+			break;
+		case "17":
+			$data["eid"] = $pdata[0];
+			$data["type"] = $pdata[1];
+			$data["x"] = $pdata[2] / 32;
+			$data["y"] = $pdata[3] / 32;
+			$data["z"] = $pdata[4] / 32;					
+			break;
+		case "18": 
+			$data["eid"] = $pdata[0];
+			$data["type"] = $pdata[1];
+			$data["x"] = $pdata[2] / 32;
+			$data["y"] = $pdata[3] / 32;
+			$data["z"] = $pdata[4] / 32;
+			break;
+		case "1d":
+			$data["eid"] = $pdata[0];
 			break;
 		case "1f":
 			$data["eid"] = $pdata[0];
 			$data["dX"] = $pdata[1] / 32;
 			$data["dY"] = $pdata[2] / 32;
-			$data["dZ"] = $pdata[3] / 32;		
+			$data["dZ"] = $pdata[3] / 32;
 			break;
 		case "20":
 			$data["eid"] = $pdata[0];
@@ -466,16 +494,14 @@ function parse_packet(){
 			$data["pitch"] = $pdata[5];				
 			break;
 		case "33":
-			if(arg("dump",false) != false){
-				$x = $pdata[0];
-				$y = $pdata[1];
-				$z = $pdata[2];
-				$len = $pdata[6];
-				$chunk = gzinflate(substr($pdata[7],2));
-				$fname = "world/region/r.". ($x >> 5).".".($z >> 5).".mcr";
-				@mkdir($path."world/region/",0777,true);
-				file_put_contents($path.$fname,$chunk);
-			}
+			$data["x"] = $pdata[0];
+			$data["y"] = $pdata[1];
+			$data["z"] = $pdata[2];
+			$data["xS"] = $pdata[3];
+			$data["yS"] = $pdata[4];
+			$data["zS"] = $pdata[5];
+			$data["lenght"] = $pdata[6];
+			$data["chunk"] = $pdata[7];
 			break;
 		case "46":
 			$data["reason"] = $pdata[0];
@@ -488,6 +514,11 @@ function parse_packet(){
 			$data["y"] = $pdata[1];
 			$data["z"] = $pdata[2];
 			$data["text"] = array($pdata[3], $pdata[4], $pdata[5], $pdata[6]);
+			break;
+		case "fa":
+			$data["channel"] = $pdata[0];
+			$data["lenght"] = $pdata[1];
+			$data["data"] = $pdata[2];
 			break;
 		case "ff":
 			$data["message"] = $pdata[0];
@@ -509,9 +540,9 @@ function write_packet($pid,$data = array(), $raw = false){
 			case "01":	//Login	
 				$packet = "\x01".
 				"\x00\x00".pack("n*",$data["version"]).
-				string_pack(strlen($data["username"])).
-				endian($data["username"]).
-				str_repeat("\x00", (version_compare($data["version"], "1.7.3", "<=") == true ? 9:16));
+				($protocol >= 23 ? write_string(""):"").
+				write_string($data["username"]).
+				str_repeat("\x00", ($protocol <= 14 ? 9:16));
 				break;
 			
 			case "02": //Handshake
@@ -534,7 +565,8 @@ function write_packet($pid,$data = array(), $raw = false){
 				write_byte($data["difficulty"]).
 				write_byte($data["mode"]).
 				write_short($data["height"]).
-				write_long($data["seed"]);
+				write_long($data["seed"]).
+				($protocol >= 23 ? write_string($data["level_type"]):"");
 				break;
 			case "0a":
 				$packet = "\x0a".
@@ -574,12 +606,27 @@ function write_packet($pid,$data = array(), $raw = false){
 				write_int($data["eid"]).
 				write_byte($data["action"]);
 				break;
+			case "1b":
+				/*$packet = "\x1b".
+				write_float($data["x"]).
+				write_float($data["y"]).
+				write_float($data["stance"]).
+				write_float($data["z"]).
+				write_float($data["yaw"]).
+				write_float($data["pitch"]).
+				($data["ground"] == true ? "\x01":"\x00");	*/		
+				break;
+			case "27":
+				$packet = "\x27".
+				write_int($data["eid"]).
+				write_int($data["vid"]);
+				break;				
 			case "fe":
 				$packet = "\xfe";
 				break;
 			case "ff":
 				$packet = "\xff".
-				string_pack(strlen($data["message"])).endian($data["message"]);
+				write_string($data["message"]);
 				break;
 		}
 	}else{
@@ -592,7 +639,7 @@ function write_packet($pid,$data = array(), $raw = false){
 		return false;
 	}
 	
-	if(arg("log", false) != false){
+	if(arg("log", false) != false and arg("log", false) != "console"){
 		$len = strlen($packet);
 		$p = "==".time()."==> SENT Packet $pid, lenght $len:".PHP_EOL;
 		$p .= hexdump($packet, false, false, true);
@@ -763,5 +810,4 @@ function utf16_decode( $str ) {
     }
     return $newstr;
 }
-
 ?>
