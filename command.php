@@ -1,6 +1,6 @@
 <?php
 	function command($command, $value, $owner = true){
-		global $arguments, $ginfo, $permissions, $buffer, $players, $colorchar, $entities, $path;
+		global $arguments, $ginfo, $permissions, $buffer, $players, $position_packet, $colorchar, $entities, $path;
 		$commands = array( //3 = owner, 2 = mod, 1 = normal
 			"follow" => 2,
 			"dump" => 3,
@@ -17,6 +17,7 @@
 			"dado" => 1,
 			"tonto" => 1,
 			"chiste" => 1,
+			"comida" => 1,
 			"fail" => 2,
 			"die" => 3,
 			"version" => 1,
@@ -35,6 +36,55 @@
 		
 		$continue = true;
 		switch($command){
+			case "comida":
+				if(sqrt(pow($entities[$players[$owner]]["x"],2)+pow($position_packet["x"],2)) > 6 or sqrt(pow($entities[$players[$owner]]["z"],2)+pow($position_packet["z"],2)) > 6){
+					privateMessage('Estas muy lejos',$owner);
+					break;
+				}
+				if($ginfo["timer"]["food".$owner]>time()){
+					privateMessage('Espera un poco',$owner);
+					break;
+				}
+				$ginfo["timer"]["food".$owner] = $time + 10;
+				
+				$food = array(
+					282 => 12, //Stew
+					364 => 12, //Steak
+					320 => 12, //Porkchop
+					366 => 14, //Chicken
+					297 => 15, //Bread
+					350 => 15, //Fish
+					260 => 16, //R Apple
+					322 => 16, //G Apple
+					363 => 17, //Raw Beef
+					319 => 17, //Raw Porkchop
+					360 => 18, //Melon
+					349 => 18, //Raw fish
+					265 => 18, //Raw Chicken
+					357 => 19, //Cookie
+					367 => 16, //Flesh
+					375 => 18, //Spider eye,					
+				);
+				$food = array_reverse($food, true);
+				$eat = false;
+				for($i=36;$i<=44;++$i){
+					$slot = $ginfo["inventory"][$i];
+					foreach($food as $item => $minhealth){
+						if($slot[0] == $item){
+							write_packet("10",array("slot" => $i-36));
+							write_packet("0e", array("status" => 4, "x" => 0, "y" => 0, "z" => 0, "face" => 0));
+							$eat = true;
+							break;
+						}
+					}
+					if($eat == true){
+						break;
+					}
+				}
+				if($eat == false){
+					privateMessage('Lo siento, no tengo comida',$owner);
+				}
+				break;
 			case "jump":
 				/*global $continue, $sock;
 				$buffer .= "\xff".write_string("Stopped by ".$owner);

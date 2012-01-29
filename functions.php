@@ -1,6 +1,5 @@
 <?php
 
-
 function console($message, $EOL = true, $log = true){
 	global $path;
 	$message .= $EOL == true ? PHP_EOL:"";
@@ -25,7 +24,10 @@ function read_byte($str, $signed = true){
 	}
 	return $b;
 }
-function write_byte($value){
+function write_byte($value, $signed = true){
+	if($signed == true){
+		$value = ($value <= -1) ? (256+$value):$value;
+	}
 	return pack("c", $value);
 }
 
@@ -285,14 +287,16 @@ function parse_packet(){
 			case "slotArray":
 			case "slotData":
 				$scount = $type == "slotData" ? 1:$pdata[count($pdata)-1];
+				$d = array();
 				for($i=0;$i<$scount;++$i){
 					$id = read_short(substr($buffer,$offset,2));
 					$offset += 2;
 					if($id != -1){
-						$count = read_byte($buffer{$offset});
+						$count = read_byte($buffer{$offset});						
 						$offset += 1;
 						$meta = read_short(substr($buffer,$offset,2));
 						$offset += 2;
+						$d[$i] = array($id,$count,$meta);
 						$enchantable_items = array(
 							 0x103, #Flint and steel
 							 0x105, #Bow
@@ -313,7 +317,7 @@ function parse_packet(){
 							 0x12E, 0x12F, 0x130, 0x131, #CHAIN
 							 0x132, 0x133, 0x134, 0x135, #IRON
 							 0x136, 0x137, 0x138, 0x139, #DIAMOND
-							 0x13A, 0x13B, 0x13C, 0x13D					
+							 0x13A, 0x13B, 0x13C, 0x13D, #GOLD
 						);
 						if(in_array($id, $enchantable_items)){
 							$len = read_short(substr($buffer,$offset,2));
@@ -325,7 +329,7 @@ function parse_packet(){
 						}
 					}
 				}
-				$pdata[] = "";
+				$pdata[] = $d;
 				break;
 			case "entityMetadata":
 				$m = array();
@@ -385,7 +389,7 @@ function parse_packet(){
 	if(arg("log", false) != false and arg("log", false) != "console"){
 		$p = "==".time()."==> RECEIVED Packet $pid, lenght $offset :".PHP_EOL;
 		$p .= hexdump(substr($buffer,0,$offset), false, false, true);
-		$p .= PHP_EOL . "--------------- END ----------" .PHP_EOL .PHP_EOL;
+		$p .= PHP_EOL .PHP_EOL;
 		file_put_contents($path."packets.log", $p, FILE_APPEND);
 	}
 	
@@ -509,6 +513,16 @@ function parse_packet(){
 				$data["mode"] = $pdata[1];
 			}
 			break;
+		case "67":
+			$data["wid"] = $pdata[0];
+			$data["slot"] = $pdata[1];
+			$data["sdata"] = $pdata[2];
+			break;
+		case "68":
+			$data["wid"] = $pdata[0];
+			$data["count"] = $pdata[1];
+			$data["sdata"] = $pdata[2];
+			break;
 		case "82":
 			$data["x"] = $pdata[0];
 			$data["y"] = $pdata[1];
@@ -539,19 +553,32 @@ function write_packet($pid,$data = array(), $raw = false){
 				break;
 			case "01":	//Login	
 				$packet = "\x01".
-				"\x00\x00".pack("n*",$data["version"]).
-				($protocol >= 23 ? write_string(""):"").
+				write_int($data["version"]).
 				write_string($data["username"]).
-				str_repeat("\x00", ($protocol <= 14 ? 9:16));
+				write_long(0);
+				if($protocol >= 23){
+					$packet .= write_string("");
+				}
+				if($protocol > 14){
+					$packet .= write_int(0).
+					write_byte(0).
+					write_byte(0).
+					write_byte(0);
+				}
+				$packet .= write_byte(0);
 				break;
 			
 			case "02": //Handshake
-				$packet = "\x02".
-				string_pack(strlen($data["username"])).endian($data["username"]);
+				$packet = "\x02";
+				if($protocol >= 23 ){
+					$packet .= write_string($data["username"]";".$data["server"]);
+				}else{
+					$packet .= write_string($data["username"]);
+				}
 				break;
 			case "03":
 				$packet = "\x03".
-				string_pack(strlen($data["message"])).endian($data["message"]);
+				write_string($data["message"]);
 				break;
 			case "07":
 				$packet = "\x07".
@@ -595,6 +622,31 @@ function write_packet($pid,$data = array(), $raw = false){
 				write_float($data["yaw"]).
 				write_float($data["pitch"]).
 				($data["ground"] == true ? "\x01":"\x00");
+				break;
+			case "0e":
+				$packet = "\x0e".
+				write_byte($data["status"]).
+				write_int($data["x"]).
+				write_byte($data["y"]).
+				write_int($data["z"]).
+				write_byte($data["face"]);			
+				break;
+			case "0f":
+				$packet = "\x0f".
+				write_int($data["x"]).
+				write_byte($data["y"]).
+				write_int($data["z"]).
+				write_byte($data["direction"]).
+				
+				write_short($data["slot"][0]);
+				if($data["slot"][0]!=-1){
+					$packet .= write_byte($data["slot"][1]).
+					write_short($data["slot"][2]);
+				}				
+				break;
+			case "10":
+				$packet = "\x10".
+				write_short($data["slot"]);
 				break;
 			case "12":
 				$packet = "\x12".
@@ -643,7 +695,7 @@ function write_packet($pid,$data = array(), $raw = false){
 		$len = strlen($packet);
 		$p = "==".time()."==> SENT Packet $pid, lenght $len:".PHP_EOL;
 		$p .= hexdump($packet, false, false, true);
-		$p .= PHP_EOL . "--------------- END ----------" .PHP_EOL .PHP_EOL;
+		$p .= PHP_EOL .PHP_EOL;
 		file_put_contents($path."packets.log", $p, FILE_APPEND);
 	}
 	

@@ -7,7 +7,27 @@
 		unset($pstruct["1b"]);
 	}
 	
+	if($protocol <= 23){
+		$pstruct["18"] = array(
+			"int",
+			"byte",
+			"int",
+			"int",
+			"int",
+			"byte",
+			"byte",
+			"entityMetadata",
+		);
+	}
+	
 	if($protocol <= 22){
+		$pstruct["09"] = array(
+			"byte",
+			"byte",
+			"byte",
+			"short",
+			"long",
+		);
 		$pstruct["01"] = array(
 			"int",
 			"string",

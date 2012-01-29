@@ -10,7 +10,7 @@ if(!defined('CLIENT_LOADED')){
 	include_once("dynmap.php");
 	//include("nbt.class.php");
 	//ini_set("display_errors", 0);
-	define("VERSION", "0.4_1 Alpha");
+	define("VERSION", "0.5 Alpha");
 	define("MAX_BUFFER_BYTES", 1024 * 1024 * 16);
 	ini_set("memory_limit", "32M");
 
@@ -45,6 +45,7 @@ Parameters:
 \tserver => Server to connect, default "127.0.0.1"
 \tport => Port to connect, default "25565"
 \tversion => Version of server, default "$lastver"
+\tprotocol
 \tusername => username to use in server and minecraft.net (if PREMIUM), default "Player"
 \tpassword => password to use in minecraft.net, if PREMIUM
 \tsecure => use HTTPS to connect to minecraft.net
@@ -67,6 +68,8 @@ $username	= arg("username", "Player");
 $password	= arg("password", "");
 $secure		= arg("secure", false);
 $version	= arg("version", $lastver);
+$protocol	= intval(arg("protocol", $versions[$lastver]));
+
 if(arg("log", false) != false){
 	if(arg("log", false) == "console"){
 		file_put_contents($path."console.log", "");	
@@ -77,7 +80,10 @@ if(arg("log", false) != false){
 		file_put_contents($path."console.log", "");	
 	}
 }
-$protocol = $versions[$version];
+if($version != $lastver){
+	$protocol = $versions[$version];
+}
+
 $colorchar = "\xa7";
 
 }
@@ -134,6 +140,7 @@ $hide = explode(",", arg("hide", ""));
 console("[*] Sending Handshake");
 write_packet("02", array(
 	"username" => $username,
+	"server" => $server.":".$port,
 ));
 
 buffer();
@@ -213,8 +220,11 @@ $ginfo = array(
 	"crouch" => 0,
 	"jump" => 0,
 	"health" => 20,
+	"food" => 20,
+	"timer" => array(),
 	"time" => 0,
 	"follow" => 0,
+	"inventory" => array(),
 	"attack" => false,
 	"aura" => false,
 	"owner" => array(
@@ -279,12 +289,20 @@ while($sock and $restart == false){
 				}
 				break;
 			case "08":
-				if($ginfo["health"] != $packet["health"]){
-					console("[*] Health: ".$packet["health"]);
+				if($ginfo["health"] != $packet["health"] or $ginfo["food"] != $packet["food"]){
+					console("[*] Health: ".$packet["health"].", Food: ". $packet["food"]);
 				}
 				$ginfo["health"] = $packet["health"];
+				$ginfo["food"] = $protocol <= 14 ? $packet["health"]:$packet["food"];
 				if($ginfo["health"]<=0){
 					write_packet("09", $ginfo);
+					$messages = array(
+						"Nooo!!!",
+						"Por que??",
+						"Solo hice lo que me pedian!",
+						"Noooouuu!",			
+					);
+					Message($messages[count($messages)-1]);
 					console("[-] Death and respawn");
 				}
 				break;
@@ -377,6 +395,19 @@ while($sock and $restart == false){
 							break;
 					}
 					console("[*] ".$m);
+				}
+				break;
+			case "67":
+				if($packet["wid"] == 0){
+					$ginfo["inventory"][$packet["slot"]] = $packet["sdata"][0];
+				}
+				break;
+				
+			case "68":
+				if($packet["wid"] == 0){
+					foreach($packet["sdata"] as $i => $slot){
+						$ginfo["inventory"][$i] = $slot;
+					}
 				}
 				break;
 			case "82":
@@ -542,6 +573,54 @@ while($sock and $restart == false){
 		socket_close($sock);
 		die();
 	}*/
+	if($ginfo["timer"]["food"]<=$time and $position_packet !== false and $ginfo["food"] <= 19){
+		$ginfo["timer"]["food"] = $time+4;
+		$food = array(
+			282 => 12, //Stew
+			364 => 12, //Steak
+			320 => 12, //Porkchop
+			366 => 14, //Chicken
+			297 => 15, //Bread
+			350 => 15, //Fish
+			260 => 16, //R Apple
+			322 => 16, //G Apple
+			363 => 17, //Raw Beef
+			319 => 17, //Raw Porkchop
+			360 => 18, //Melon
+			349 => 18, //Raw fish
+			265 => 18, //Raw Chicken
+			357 => 19, //Cookie
+			367 => 16, //Flesh
+			375 => 18, //Spider eye,
+			
+		);
+		$eat = false;
+		for($i=36;$i<=44;++$i){
+			$slot = $ginfo["inventory"][$i];
+			foreach($food as $item => $minhealth){
+				if($slot[0] == $item and $ginfo["food"] <= $minhealth){
+					write_packet("10",array("slot" => $i-36));
+					write_packet("0f", array("x" => -1, "y" => -1, "z" => -1, "direction" => -1, "slot" => array(-1)));
+					$ginfo["food"] = 20;
+					$eat = true;
+					break;
+				}
+			}
+			if($eat == true){
+				break;
+			}
+		}
+		if($ginfo["timer"]["sayfood"]<=$time and $eat == false and $ginfo["food"] <= 12){
+			$ginfo["timer"]["sayfood"] = $time+60;
+			$messages = array(
+				"Necesito comida!",
+				"Comida!!!",
+				"Me muero de hambre!",
+				"No tengo comida!",			
+			);
+			Message($messages[count($messages)-1]);
+		}
+	}
 	if($do){
 		$next = $time+0.05;
 	}

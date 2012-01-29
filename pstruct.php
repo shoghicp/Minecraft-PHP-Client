@@ -60,6 +60,7 @@ $pstruct = array(
 		"byte",
 		"short",
 		"long",
+		"string",
 	),
 	
 	"0d" => array(
@@ -138,6 +139,7 @@ $pstruct = array(
 		"int",
 		"byte",
 		"byte",
+		"byte",
 		"entityMetadata",
 	),
 	
@@ -210,6 +212,11 @@ $pstruct = array(
 		"int",
 		"int",
 		"byte",
+		"byte",
+	),
+	
+	"23" => array(
+		"int",
 		"byte",
 	),
 	
