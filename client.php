@@ -214,6 +214,7 @@ $position_packet = false;
 $next = 0;
 $start = $next;
 $moving = 0;
+$chunks = array();
 $ginfo = array(
 	"eid" => 0,
 	"seed" => 0,
@@ -371,16 +372,17 @@ while($sock and $restart == false){
 				$entities[$packet["eid"]]["y"] = $packet["y"];
 				$entities[$packet["eid"]]["z"] = $packet["z"];					
 				break;
-			case "33":
-				if(arg("dump",false) != false){
-					if($packet["xS"] == 15 and $packet["yS"] == 127 and $packet["zS"] == 15){
+			case "33":				
+				if($packet["xS"] == 15 and $packet["yS"] == 127 and $packet["zS"] == 15){
+					$chunk = chunk_read(gzinflate(substr($packet["chunk"],2)), $packet["x"], $packet["z"], arg("dump",false) != false ? false:true);
+					$chunks = array_merge($chunks, $chunk);
+					if(arg("dump",false) != false){
 						$fname = "world/region/r.". ($packet["x"] >> 5).".".($packet["z"] >> 5).".mcr";
 						@mkdir($path."world/region/",0777,true);
-						$chunk = chunk_read(gzinflate(substr($packet["chunk"],2)), $packet["x"], $packet["z"]);
-						file_put_contents($path.$fname,print_r($chunk,true));
-						//file_put_contents($path.$fname,gzinflate(substr($packet["chunk"],2)));
-						//file_put_contents($path.$fname,$packet["chunk"]);
+						file_put_contents($path.$fname,print_r($chunk,true));	
 					}
+					//file_put_contents($path.$fname,gzinflate(substr($packet["chunk"],2)));
+					//file_put_contents($path.$fname,$packet["chunk"]);
 				}
 				break;
 			case "46";
