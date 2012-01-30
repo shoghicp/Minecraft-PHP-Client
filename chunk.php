@@ -1,6 +1,6 @@
 <?php
 
-function chunk_read($data, $X, $Z, $onlyBlocks = false){
+function read_chunk($data, $X, $Z, $onlyBlocks = false){
 	$totalOffset = 0;
 	$size = strlen($data);
 	$chunkBlocks = 16 * 16 * 128; //32768
@@ -34,7 +34,7 @@ function chunk_read($data, $X, $Z, $onlyBlocks = false){
 		}
 		$totalOffset += $offset;
 	}
-	return $chunk;
+	return $onlyBlocks == true ? $chunk["block"]:$chunk;
 }
 
 ?>

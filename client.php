@@ -215,6 +215,7 @@ $next = 0;
 $start = $next;
 $moving = 0;
 $chunks = array();
+$tchunk = array();
 $ginfo = array(
 	"eid" => 0,
 	"seed" => 0,
@@ -228,6 +229,7 @@ $ginfo = array(
 	"health" => 20,
 	"food" => 20,
 	"timer" => array(),
+	"state" => array(),
 	"time" => 0,
 	"follow" => 0,
 	"fly" => false,
@@ -374,16 +376,20 @@ while($sock and $restart == false){
 				break;
 			case "33":				
 				if($packet["xS"] == 15 and $packet["yS"] == 127 and $packet["zS"] == 15){
-					$chunk = chunk_read(gzinflate(substr($packet["chunk"],2)), $packet["x"], $packet["z"], arg("dump",false) != false ? false:true);
+					file_put_contents($path."tmp/".$packet["x"].".".$packet["z"].".tchunk",gzinflate(substr($packet["chunk"],2)));
+					$tchunk[$packet["x"]."|".$packet["z"]] = $path."tmp/".$packet["x"].".".$packet["z"].".tchunk";
+				}
+				break;
+					//$chunk = chunk_read(gzinflate(substr($packet["chunk"],2)), $packet["x"], $packet["z"], arg("dump",false) != false ? false:true);
 					$chunks = array_merge($chunks, $chunk);
 					if(arg("dump",false) != false){
 						$fname = "world/region/r.". ($packet["x"] >> 5).".".($packet["z"] >> 5).".mcr";
 						@mkdir($path."world/region/",0777,true);
 						file_put_contents($path.$fname,print_r($chunk,true));	
 					}
+					unset($chunk);
 					//file_put_contents($path.$fname,gzinflate(substr($packet["chunk"],2)));
 					//file_put_contents($path.$fname,$packet["chunk"]);
-				}
 				break;
 			case "46";
 				if(!in_array("state",$hide)){
@@ -440,6 +446,14 @@ while($sock and $restart == false){
 		));
 		$do = true;
 	}*/
+	if($position_packet != false and $ginfo["timer"]["chunk"] <= $time){
+		$ginfo["timer"]["chunk"] += $time + 10;
+		$x = intval($position_packet["x"] / 16) * 16;
+		$z = intval($position_packet["z"] / 16) * 16;
+		if(isset($tchunk[$x."|".$z])){
+			$chunks = array_merge($chunks, read_chunk(file_get_contents($tchunk[$x."|".$z]), $x, $z, true));
+		}
+	}
 	if($next <= $time and $time%32==0){
 		foreach(DynMapCoords() as $player){
 			if(!isset($players[$player["name"]]) or $players[$player["name"]] == md5($player["name"])){
@@ -527,7 +541,7 @@ while($sock and $restart == false){
 					$position_packet["yaw"] = -rad2deg(atan(($position_packet["x"] - $entities[$ginfo["follow"]]["x"])/($position_packet["z"] - $entities[$ginfo["follow"]]["z"])));
 					$position_packet["pitch"] = mt_rand(-10,10);
 					$position_packet["z"] += ($position_packet["z"] - $entities[$ginfo["follow"]]["z"]>0 ? -0.25:0.25);
-					$position_packet["ground"] = ($ginfo["jump"] > 0 or $ginfo["fly"] == true) ? false:true;
+					$position_packet["ground"] = ($ginfo["jump"] > 0 and $ginfo["fly"] == false) ? false:true;
 					write_packet("0d", $position_packet);
 				}else{
 					$moving = 0;

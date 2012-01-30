@@ -23,6 +23,7 @@
 			"die" => 3,
 			"version" => 1,
 			"coord" => 1,
+			"block" => 1,
 		);
 		$clist = "";
 		foreach($commands as $c=>$p){
@@ -37,6 +38,10 @@
 		
 		$continue = true;
 		switch($command){
+			case "block":
+				global $chunks;				
+				privateMessage("Estoy encima de: ".$chunks[intval($position_packet["x"])."|".(ceil($position_packet["y"])-3)."|".intval($position_packet["z"])],$owner);
+				break;
 			case "fly":
 				$ginfo["fly"] = $ginfo["fly"] == true ? false:true;
 				break;
