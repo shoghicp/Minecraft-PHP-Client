@@ -22,10 +22,16 @@
 			$sender = explode(".", substr($packet["message"],1,strpos($packet["message"], "->")-2));
 			$sender = isset($sender[1]) ? $sender[1]:$sender[0];
 			$packet["message"] = substr($packet["message"],strpos($packet["message"], "]")+2);
+			if(strpos($packet["message"],": ")!==false){
+				$packet["message"] = explode("] ",$packet["message"]);
+				$packet["message"] = trim($packet["message"][count($packet["message"])-1]);
+				$sender = false;
+			}
 		}elseif(strpos($packet["message"], " whispers ") !== false){
 			$sender = substr($packet["message"],0,strpos($packet["message"], " "));
 			$packet["message"] = substr($packet["message"],strpos($packet["message"], " whispers ")+10);
-		}elseif(stripos($packet["message"], "bot") !== false){
+		}
+		if(stripos($packet["message"], "bot") !== false and $sender == false){
 			
 			
 			

@@ -3,6 +3,7 @@
 		global $arguments, $ginfo, $permissions, $buffer, $players, $position_packet, $colorchar, $entities, $path;
 		$commands = array( //3 = owner, 2 = mod, 1 = normal
 			"follow" => 2,
+			"fly" => 2,
 			"dump" => 3,
 			"path" => 3,
 			"restart" => 3,
@@ -36,8 +37,11 @@
 		
 		$continue = true;
 		switch($command){
+			case "fly":
+				$ginfo["fly"] = $ginfo["fly"] == true ? false:true;
+				break;
 			case "comida":
-				if(sqrt(pow($entities[$players[$owner]]["x"],2)+pow($position_packet["x"],2)) > 6 or sqrt(pow($entities[$players[$owner]]["z"],2)+pow($position_packet["z"],2)) > 6){
+				if(sqrt(pow(abs($position_packet["x"]-$entities[$players[$owner]]["x"]),2)+pow(abs($position_packet["z"]-$entities[$players[$owner]]["z"]),2)) > 6){
 					privateMessage('Estas muy lejos',$owner);
 					break;
 				}

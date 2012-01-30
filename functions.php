@@ -570,8 +570,8 @@ function write_packet($pid,$data = array(), $raw = false){
 			
 			case "02": //Handshake
 				$packet = "\x02";
-				if($protocol >= 23 ){
-					$packet .= write_string($data["username"]";".$data["server"]);
+				if($protocol > 23 ){
+					$packet .= write_string($data["username"].";".$data["server"]);
 				}else{
 					$packet .= write_string($data["username"]);
 				}

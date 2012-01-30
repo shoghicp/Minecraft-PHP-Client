@@ -224,6 +224,7 @@ $ginfo = array(
 	"timer" => array(),
 	"time" => 0,
 	"follow" => 0,
+	"fly" => false,
 	"inventory" => array(),
 	"attack" => false,
 	"aura" => false,
@@ -508,12 +509,16 @@ while($sock and $restart == false){
 						$ginfo["jump"] = 1;
 					}
 					$position_packet["x"] += ($position_packet["x"] - $entities[$ginfo["follow"]]["x"]>0 ? -0.25:0.25);
-					$position_packet["y"] = $position_packet["y"] + $ginfo["jump"];
+					if($ginfo["fly"] == false){
+						$position_packet["y"] = $position_packet["y"] + $ginfo["jump"];
+					}else{
+						$position_packet["y"] += ($position_packet["y"] - $entities[$ginfo["follow"]]["y"]>0 ? -0.25:0.25);
+					}
 					$position_packet["stance"] = $position_packet["y"] + 1.6;
 					$position_packet["yaw"] = -rad2deg(atan(($position_packet["x"] - $entities[$ginfo["follow"]]["x"])/($position_packet["z"] - $entities[$ginfo["follow"]]["z"])));
 					$position_packet["pitch"] = mt_rand(-10,10);
 					$position_packet["z"] += ($position_packet["z"] - $entities[$ginfo["follow"]]["z"]>0 ? -0.25:0.25);
-					$position_packet["ground"] = $ginfo["jump"] > 0 ? false:true;
+					$position_packet["ground"] = ($ginfo["jump"] > 0 or $ginfo["fly"] == true) ? false:true;
 					write_packet("0d", $position_packet);
 				}else{
 					$moving = 0;
