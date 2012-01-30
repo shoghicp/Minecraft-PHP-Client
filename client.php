@@ -1,5 +1,8 @@
 <?php
 set_time_limit(0);
+error_reporting(E_ALL ^ E_NOTICE);
+ini_set("display_errors", 1);
+
 if(!defined('CLIENT_LOADED')){
 	$path = dirname(__FILE__)."/";
 	set_include_path($path);
@@ -8,11 +11,12 @@ if(!defined('CLIENT_LOADED')){
 	include_once("packets.php");
 	include_once("command.php");
 	include_once("dynmap.php");
+	include_once("chunk.php");
 	//include("nbt.class.php");
 	//ini_set("display_errors", 0);
-	define("VERSION", "0.5 Alpha");
+	define("VERSION", "0.6 Alpha");
 	define("MAX_BUFFER_BYTES", 1024 * 1024 * 16);
-	ini_set("memory_limit", "32M");
+	ini_set("memory_limit", "128M");
 
 
 $versions = array(
@@ -55,6 +59,7 @@ Parameters:
 \thide => hides elements here from console, separated by a comma (sign, chat, nspawn, state, position)
 \tcrazyness => moves around doing things (moves head) (values: mad, normal)
 \towner => set owner (follow, commands)
+\tonly-food => only accept food as inventory items (default false)
 
 Example:
 php {$argv[0]} --server=127.0.0.1 --username=shoghicp --version=b1.8.1 --hide=sign,chat
@@ -371,8 +376,10 @@ while($sock and $restart == false){
 					if($packet["xS"] == 15 and $packet["yS"] == 127 and $packet["zS"] == 15){
 						$fname = "world/region/r.". ($packet["x"] >> 5).".".($packet["z"] >> 5).".mcr";
 						@mkdir($path."world/region/",0777,true);
-						file_put_contents($path.$fname,gzinflate(substr($packet["chunk"],2)));
-						file_put_contents($path.$fname,$packet["chunk"]);
+						$chunk = chunk_read(gzinflate(substr($packet["chunk"],2)), $packet["x"], $packet["z"]);
+						file_put_contents($path.$fname,print_r($chunk,true));
+						//file_put_contents($path.$fname,gzinflate(substr($packet["chunk"],2)));
+						//file_put_contents($path.$fname,$packet["chunk"]);
 					}
 				}
 				break;
@@ -578,7 +585,7 @@ while($sock and $restart == false){
 		socket_close($sock);
 		die();
 	}*/
-	if($ginfo["timer"]["food"]<=$time and $position_packet !== false and $ginfo["food"] <= 19){
+	if($ginfo["timer"]["food"]<=$time and $position_packet !== false){
 		$ginfo["timer"]["food"] = $time+4;
 		$food = array(
 			282 => 12, //Stew
@@ -602,19 +609,19 @@ while($sock and $restart == false){
 		$eat = false;
 		for($i=36;$i<=44;++$i){
 			$slot = $ginfo["inventory"][$i];
-			foreach($food as $item => $minhealth){
-				if($slot[0] == $item and $ginfo["food"] <= $minhealth){
-					write_packet("10",array("slot" => $i-36));
-					write_packet("0f", array("x" => -1, "y" => -1, "z" => -1, "direction" => -1, "slot" => array(-1)));
-					$ginfo["food"] = 20;
-					$eat = true;
-					break;
+			if(isset($food[$slot[0]]) == true and $ginfo["food"] <= $food[$slot[0]]){
+				write_packet("10",array("slot" => $i-36));
+				write_packet("0f", array("x" => -1, "y" => -1, "z" => -1, "direction" => -1, "slot" => array(-1)));
+				$ginfo["food"] = 20;
+				$eat = true;
+				break;
+			}elseif(!isset($food[$slot[0]]) and arg("only-food", false) == true){
+				for($a=0;$a<min(3,$slot[1]);++$a){
+					write_packet("10",array("slot" => $i-36));				
+					write_packet("0e", array("status" => 4, "x" => 0, "y" => 0, "z" => 0, "face" => 0));
 				}
 			}
-			if($eat == true){
-				break;
-			}
-		}
+		}			
 		if($ginfo["timer"]["sayfood"]<=$time and $eat == false and $ginfo["food"] <= 12){
 			$ginfo["timer"]["sayfood"] = $time+60;
 			$messages = array(
