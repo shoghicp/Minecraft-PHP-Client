@@ -40,7 +40,7 @@
 		switch($command){
 			case "block":
 				global $chunks, $material;
-				$block = chunk_get_block($position_packet["x"], $position_packet["y"] - 3, $position_packet["z"]);
+				$block = chunk_get_block($position_packet["x"], $position_packet["y"] - 1, $position_packet["z"]);
 				privateMessage("Estoy encima de: ".$material[$block]." (".$block.")",$owner);
 				break;
 			case "fly":
