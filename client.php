@@ -7,7 +7,6 @@ if(!defined('CLIENT_LOADED')){
 	$path = dirname(__FILE__)."/";
 	set_include_path($path);
 	include_once("functions.php");
-	include("pstruct.php");
 	include_once("packets.php");
 	include_once("command.php");
 	include_once("dynmap.php");
@@ -16,6 +15,7 @@ if(!defined('CLIENT_LOADED')){
 	//ini_set("display_errors", 0);
 	define("VERSION", "0.6 Alpha");
 	define("MAX_BUFFER_BYTES", 1024 * 1024 * 16);
+	define("RESTART_TIME", 60 * 60); //1h
 	ini_set("memory_limit", "128M");
 
 
@@ -92,7 +92,8 @@ if($version != $lastver){
 $colorchar = "\xa7";
 
 }
-
+include("materials.php");
+include("pstruct.php");
 include("pstruct_modifier.php");
 
 if(!defined("CLIENT_LOADED")){
@@ -228,7 +229,9 @@ $ginfo = array(
 	"jump" => 0,
 	"health" => 20,
 	"food" => 20,
-	"timer" => array(),
+	"timer" => array(
+		"restart" => time() + RESTART_TIME,
+	),
 	"state" => array(),
 	"time" => 0,
 	"follow" => 0,
@@ -376,20 +379,8 @@ while($sock and $restart == false){
 				break;
 			case "33":				
 				if($packet["xS"] == 15 and $packet["yS"] == 127 and $packet["zS"] == 15){
-					file_put_contents($path."tmp/".$packet["x"].".".$packet["z"].".tchunk",gzinflate(substr($packet["chunk"],2)));
-					$tchunk[$packet["x"]."|".$packet["z"]] = $path."tmp/".$packet["x"].".".$packet["z"].".tchunk";
+					chunk_add($packet["chunk"], $packet["x"], $packet["z"]);
 				}
-				break;
-					//$chunk = chunk_read(gzinflate(substr($packet["chunk"],2)), $packet["x"], $packet["z"], arg("dump",false) != false ? false:true);
-					$chunks = array_merge($chunks, $chunk);
-					if(arg("dump",false) != false){
-						$fname = "world/region/r.". ($packet["x"] >> 5).".".($packet["z"] >> 5).".mcr";
-						@mkdir($path."world/region/",0777,true);
-						file_put_contents($path.$fname,print_r($chunk,true));	
-					}
-					unset($chunk);
-					//file_put_contents($path.$fname,gzinflate(substr($packet["chunk"],2)));
-					//file_put_contents($path.$fname,$packet["chunk"]);
 				break;
 			case "46";
 				if(!in_array("state",$hide)){
@@ -446,14 +437,7 @@ while($sock and $restart == false){
 		));
 		$do = true;
 	}*/
-	if($position_packet != false and $ginfo["timer"]["chunk"] <= $time){
-		$ginfo["timer"]["chunk"] += $time + 10;
-		$x = intval($position_packet["x"] / 16) * 16;
-		$z = intval($position_packet["z"] / 16) * 16;
-		if(isset($tchunk[$x."|".$z])){
-			$chunks = array_merge($chunks, read_chunk(file_get_contents($tchunk[$x."|".$z]), $x, $z, true));
-		}
-	}
+	
 	if($next <= $time and $time%32==0){
 		foreach(DynMapCoords() as $player){
 			if(!isset($players[$player["name"]]) or $players[$player["name"]] == md5($player["name"])){

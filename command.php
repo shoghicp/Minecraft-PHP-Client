@@ -39,8 +39,9 @@
 		$continue = true;
 		switch($command){
 			case "block":
-				global $chunks;				
-				privateMessage("Estoy encima de: ".$chunks[intval($position_packet["x"])."|".(ceil($position_packet["y"])-3)."|".intval($position_packet["z"])],$owner);
+				global $chunks, $material;
+				$block = chunk_get_block($position_packet["x"], $position_packet["y"] - 3, $position_packet["z"]);
+				privateMessage("Estoy encima de: ".$material[$block]." (".$block.")",$owner);
 				break;
 			case "fly":
 				$ginfo["fly"] = $ginfo["fly"] == true ? false:true;
@@ -261,6 +262,16 @@
 					"Como se dice en aleman autobus!   ...subenpagenestrugenbagen",
 					"¿Que le dice una ficha de puzzle a otra? Solo hay un sitio para mi",
 					"Trololololololololololo... Trololololo... Hahaha!!",
+					"Llega corriendo Pepita a su casa: ¿Mama, mama, es verdad que soy huerfana...?",
+					"- Y tu, ¿como te llamas? - Yo, Bienvenido. - ¡Anda! ¡como mi felpudo!",
+					"El coronel dijo: ¡Sigan avanzando! Y todos se perdieron, porque Vanzando no se sabía el camino.",
+					"Están en un barco y dice el capitán: -Subid las velas!! Y los de abajo se quedaron a oscuras",
+					"Entra uno a un bar de pinchos y... hay ! huy! ahy ! huy!",
+					"Había una vez un señor tan gordo, que cada vez que daba una vuelta era su cumpleaños.",
+					"Había una vez un hombre tan feo, tan feo, que fue a un concurso de feos y lo perdió por feo.",
+					"Había una vez una persona tan pobre, tan pobre, tan pobre que no tenia ni hambre.",
+					"Había una vez una vaca que se comió un vidrio, y la leche le salió cortada.",
+					"- Ay, cariño... No sé que sería el tiempo sin ti... - Pues que va a ser: empo!!!",
 				);
 				privateMessage($chiste[mt_rand(0,count($chiste)-1)],$owner);
 				$continue = false;
