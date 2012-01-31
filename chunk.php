@@ -45,6 +45,17 @@ function chunk_add($data, $x, $z){
 	return true;
 }
 
+function chunk_clean($x, $z){
+	global $chunks;
+	$x /= 16;
+	$z /= 16;
+	if(!isset($chunks[$X."|".$Z])){
+		return false;
+	}
+	$chunks[$x."|".$z] = substr($chunks[$x."|".$z],0,16 + 16 * 128);
+	return true;
+}
+
 function chunk_load($x, $z){
 	global $chunks, $tchunk;
 	if(!isset($tchunk[$x."|".$z]) and isset($chunks[$x."|".$z])){
@@ -55,6 +66,26 @@ function chunk_load($x, $z){
 	}else{
 		return false;
 	}
+}
+
+function chunk_get_radius($x,$y,$z,$r=4){
+	$r = abs($r);
+	return chunk_get_zone($x-$r,$y-$r,$z-$r,$x+$r,$y+$r,$z+$r);	
+}
+
+function chunk_get_zone($x1,$z1,$y1, $x2,$z2,$y2){
+	if($x1>$x2 or $y1>$y2 or $z1>$z2){
+		return false;
+	}
+	$blocks = array();
+	for($x=$x1;$x<=$x2;++$x){
+		for($y=$y1;$y<=$y2;++$y){
+			for($z=$z1;$z<=$z2;++$z){
+				$blocks[$x][$y][$z] = chunk_get_block($x,$y,$z);
+			}
+		}
+	}
+	return $blocks;
 }
 
 function chunk_get_block($x,$y,$z){
@@ -69,15 +100,30 @@ function chunk_get_block($x,$y,$z){
 	$y %= 128;
 	$z %= 16;
 	
-	/*if(!isset($tchunk[$X."|".$Z])){
-		chunk_load($X, $Z);
-	}*/
 	if(!isset($chunks[$X."|".$Z])){
 		return false;
 	}
 	$index = $y + ($z * 128) + ($x * 128 * 16);
-	echo $index.PHP_EOL;
 	return read_byte($chunks[$X."|".$Z]{$index},false);
+}
+
+function chunk_edit_block($x,$y,$z,$value){
+	global $chunks;
+	$x = intval($x);
+	$y = intval($y);
+	$z = intval($z);
+	$X = intval($x / 16);
+	$Z = intval($z / 16);	
+	$x %= 16;
+	$y %= 128;
+	$z %= 16;
+
+	if(!isset($chunks[$X."|".$Z])){
+		return false;
+	}
+	$index = $y + ($z * 128) + ($x * 128 * 16);
+	$chunks[$X."|".$Z]{$index} = write_byte($value,false);
+	return true;
 }
 
 ?>

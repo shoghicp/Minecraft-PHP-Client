@@ -39,6 +39,7 @@
 		$continue = true;
 		switch($command){
 			case "block":
+			case "bloque":
 				global $chunks, $material;
 				$block = chunk_get_block($position_packet["x"], $position_packet["y"] - 1, $position_packet["z"]);
 				privateMessage("Estoy encima de: ".$material[$block]." (".$block.")",$owner);
@@ -57,29 +58,12 @@
 				}
 				$ginfo["timer"]["food".$owner] = $time + 10;
 				
-				$food = array(
-					282 => 12, //Stew
-					364 => 12, //Steak
-					320 => 12, //Porkchop
-					366 => 14, //Chicken
-					297 => 15, //Bread
-					350 => 15, //Fish
-					260 => 16, //R Apple
-					322 => 16, //G Apple
-					363 => 17, //Raw Beef
-					319 => 17, //Raw Porkchop
-					360 => 18, //Melon
-					349 => 18, //Raw fish
-					265 => 18, //Raw Chicken
-					357 => 19, //Cookie
-					367 => 16, //Flesh
-					375 => 18, //Spider eye,					
-				);
-				$food = array_reverse($food, true);
+				global $food;
+				$food2 = array_reverse($food, true);
 				$eat = false;
 				for($i=36;$i<=44;++$i){
 					$slot = $ginfo["inventory"][$i];
-					foreach($food as $item => $minhealth){
+					foreach($food2 as $item => $minhealth){
 						if($slot[0] == $item){
 							write_packet("10",array("slot" => $i-36));
 							write_packet("0e", array("status" => 4, "x" => 0, "y" => 0, "z" => 0, "face" => 0));

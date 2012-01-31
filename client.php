@@ -380,7 +380,11 @@ while($sock and $restart == false){
 			case "33":				
 				if($packet["xS"] == 15 and $packet["yS"] == 127 and $packet["zS"] == 15){
 					chunk_add($packet["chunk"], $packet["x"], $packet["z"]);
+					chunk_clean($packet["x"], $packet["z"]);
 				}
+				break;
+			case "35":
+				chunk_edit_block($packet["x"],$packet["y"],$packet["z"],$packet["type"]);
 				break;
 			case "46";
 				if(!in_array("state",$hide)){
@@ -587,29 +591,10 @@ while($sock and $restart == false){
 	}*/
 	if($ginfo["timer"]["food"]<=$time and $position_packet !== false){
 		$ginfo["timer"]["food"] = $time+4;
-		$food = array(
-			282 => 12, //Stew
-			364 => 12, //Steak
-			320 => 12, //Porkchop
-			366 => 14, //Chicken
-			297 => 15, //Bread
-			350 => 15, //Fish
-			260 => 16, //R Apple
-			322 => 16, //G Apple
-			363 => 17, //Raw Beef
-			319 => 17, //Raw Porkchop
-			360 => 18, //Melon
-			349 => 18, //Raw fish
-			265 => 18, //Raw Chicken
-			357 => 19, //Cookie
-			367 => 16, //Flesh
-			375 => 18, //Spider eye,
-			
-		);
 		$eat = false;
 		for($i=36;$i<=44;++$i){
 			$slot = $ginfo["inventory"][$i];
-			if(isset($food[$slot[0]]) == true and $ginfo["food"] <= $food[$slot[0]]){
+			if(isset($food[$slot[0]]) == true and ($ginfo["food"] + $food[$slot[0]]) <= 20){
 				write_packet("10",array("slot" => $i-36));
 				write_packet("0f", array("x" => -1, "y" => -1, "z" => -1, "direction" => -1, "slot" => array(-1)));
 				$ginfo["food"] = 20;

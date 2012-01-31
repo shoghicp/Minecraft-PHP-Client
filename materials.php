@@ -50,5 +50,24 @@
 	
 	);
 	
+	$food = array(
+		282 => 8, //Stew
+		364 => 8, //Steak
+		320 => 8, //Porkchop
+		366 => 6, //Chicken
+		297 => 5, //Bread
+		350 => 5, //Fish
+		260 => 4, //R Apple
+		322 => 4, //G Apple
+		363 => 3, //Raw Beef
+		319 => 3, //Raw Porkchop
+		360 => 2, //Melon
+		349 => 2, //Raw fish
+		265 => 2, //Raw Chicken
+		357 => 1, //Cookie
+		367 => 4, //Flesh
+		375 => 2, //Spider eye,		
+	);
+	
 
 ?>

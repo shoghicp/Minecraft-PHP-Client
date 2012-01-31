@@ -507,6 +507,21 @@ function parse_packet(){
 			$data["lenght"] = $pdata[6];
 			$data["chunk"] = $pdata[7];
 			break;
+		case "34":
+			$data["x"] = $pdata[0];
+			$data["z"] = $pdata[1];
+			$data["size"] = $pdata[2];
+			$data["carray"] = $pdata[3];
+			$data["tarray"] = $pdata[4];
+			$data["marray"] = $pdata[5];
+			break;
+		case "35":
+			$data["x"] = $pdata[0];
+			$data["y"] = $pdata[1];
+			$data["z"] = $pdata[2];
+			$data["type"] = $pdata[3];
+			$data["meta"] = $pdata[4];
+			break;
 		case "46":
 			$data["reason"] = $pdata[0];
 			if($protocol <= 14){
