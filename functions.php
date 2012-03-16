@@ -3,7 +3,7 @@
 function console($message, $EOL = true, $log = true){
 	global $path;
 	$message .= $EOL == true ? PHP_EOL:"";
-	if($log and arg("log", false) != false and arg("log", false) != "packets"){
+	if($log and arg("log", false) === true or (arg("log", false) != false and arg("log", false) != "packets")){
 		file_put_contents($path."console.log", $message, FILE_APPEND);
 	}
 	echo $message;
@@ -284,6 +284,25 @@ function parse_packet(){
 				}
 				$pdata[] = "";
 				break;
+			case "newChunkArray":
+				$len = max(0,$pdata[5]);
+				$first = false;
+				while(strlen($r)<$len){ //Sometimes low-bandwidth servers made client a crash
+					if($first == true){
+						buffer();
+						global $buffer;
+					}
+					$first = true;						
+					$r = substr($buffer, $offset, $len);
+				}
+				$pdata[] = $r;
+				$offset += $len;
+				break;
+			case "newMultiblockArray":
+				$count = $pdata[count($pdata)-1];
+				$offset += $count;
+				$pdata[] = "";
+				break;
 			case "slotArray":
 			case "slotData":
 				$scount = $type == "slotData" ? 1:$pdata[count($pdata)-1];
@@ -386,11 +405,13 @@ function parse_packet(){
 		}
 		++$field;
 	}
-	if(arg("log", false) != false and arg("log", false) != "console"){
+	if(arg("log", false) === true or (arg("log", false) != false and arg("log", false) == "packets")){
 		$p = "==".time()."==> RECEIVED Packet $pid, lenght $offset :".PHP_EOL;
 		$p .= hexdump(substr($buffer,0,$offset), false, false, true);
 		$p .= PHP_EOL .PHP_EOL;
 		file_put_contents($path."packets.log", $p, FILE_APPEND);
+	}elseif(arg("log", false) != false and arg("log", false) == "raw"){
+		file_put_contents($path."raw_recv.log", substr($buffer,0,$offset), FILE_APPEND);
 	}
 	
 	$buffer = substr($buffer, $offset); // Clear packet
@@ -498,22 +519,42 @@ function parse_packet(){
 			$data["pitch"] = $pdata[5];				
 			break;
 		case "33":
-			$data["x"] = $pdata[0];
-			$data["y"] = $pdata[1];
-			$data["z"] = $pdata[2];
-			$data["xS"] = $pdata[3];
-			$data["yS"] = $pdata[4];
-			$data["zS"] = $pdata[5];
-			$data["lenght"] = $pdata[6];
-			$data["chunk"] = $pdata[7];
+			if($protocol <= 23){
+				$data["x"] = $pdata[0];
+				$data["y"] = $pdata[1];
+				$data["z"] = $pdata[2];
+				$data["xS"] = $pdata[3];
+				$data["yS"] = $pdata[4];
+				$data["zS"] = $pdata[5];
+				$data["lenght"] = $pdata[6];
+				$data["chunk"] = $pdata[7];
+			}else{
+				$data["x"] = $pdata[0];
+				$data["z"] = $pdata[1];
+				$data["continuous"] = $pdata[2];
+				$data["pbm"] = $pdata[3];
+				$data["abm"] = $pdata[4];
+				$data["lenght"] = $pdata[5];
+				$data["chunk"] = $pdata[7];
+			}			
 			break;
 		case "34":
-			$data["x"] = $pdata[0];
-			$data["z"] = $pdata[1];
-			$data["size"] = $pdata[2];
-			$data["carray"] = $pdata[3];
-			$data["tarray"] = $pdata[4];
-			$data["marray"] = $pdata[5];
+			if($protocol <= 23){
+				$data["x"] = $pdata[0];
+				$data["z"] = $pdata[1];
+				$data["size"] = $pdata[2];
+				$data["carray"] = $pdata[3];
+				$data["tarray"] = $pdata[4];
+				$data["marray"] = $pdata[5];
+			}else{
+				$data["x"] = $pdata[0];
+				$data["z"] = $pdata[1];
+				$data["count"] = $pdata[2];
+				$data["size"] = $pdata[3];
+				/*$data["carray"] = $pdata[4];
+				$data["tarray"] = $pdata[5];
+				$data["marray"] = $pdata[6];*/
+			}
 			break;
 		case "35":
 			$data["x"] = $pdata[0];
@@ -569,15 +610,21 @@ function write_packet($pid,$data = array(), $raw = false){
 			case "01":	//Login	
 				$packet = "\x01".
 				write_int($data["version"]).
-				write_string($data["username"]).
-				write_long(0);
+				write_string($data["username"]);
+				if($protocol<=23){
+					$packet .= write_long(0);
+				}
 				if($protocol >= 23){
 					$packet .= write_string("");
 				}
 				if($protocol > 14){
-					$packet .= write_int(0).
-					write_byte(0).
-					write_byte(0).
+					$packet .= write_int(0);
+					if($protocol >= 23){
+						$packet .= write_int(0);
+					}else{
+						$packet .= write_byte(0);
+					}
+					$packet .= write_byte(0).
 					write_byte(0);
 				}
 				$packet .= write_byte(0);
@@ -706,12 +753,14 @@ function write_packet($pid,$data = array(), $raw = false){
 		return false;
 	}
 	
-	if(arg("log", false) != false and arg("log", false) != "console"){
+	if(arg("log", false) === true and (arg("log", false) != false and arg("log", false) == "packets")){
 		$len = strlen($packet);
 		$p = "==".time()."==> SENT Packet $pid, lenght $len:".PHP_EOL;
 		$p .= hexdump($packet, false, false, true);
 		$p .= PHP_EOL .PHP_EOL;
 		file_put_contents($path."packets.log", $p, FILE_APPEND);
+	}elseif(arg("log", false) != false and arg("log", false) == "raw"){
+		file_put_contents($path."raw_sent.log", $packet, FILE_APPEND);
 	}
 	
 	return @socket_write($sock, $packet);

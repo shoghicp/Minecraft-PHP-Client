@@ -14,10 +14,9 @@ $pstruct = array(
 	"01" => array(
 		"int",
 		"string",
-		"long",
 		"string",
 		"int",
-		"byte",
+		"int",
 		"byte",
 		"ubyte",
 		"ubyte",
@@ -55,11 +54,10 @@ $pstruct = array(
 	),
 	
 	"09" => array(
-		"byte",
+		"int",
 		"byte",
 		"byte",
 		"short",
-		"long",
 		"string",
 	),
 	
@@ -261,20 +259,21 @@ $pstruct = array(
 	
 	"33" => array(
 		"int",
+		"int",
+		"bool",
+		"short",
 		"short",
 		"int",
-		"byte",
-		"byte",
-		"byte",
 		"int",
-		"chunkArray",
+		"newChunkArray",
 	),
 	
 	"34" => array(
 		"int",
 		"int",
 		"short",
-		"multiblockArray",
+		"int",
+		"newMultiblockArray",
 	),
 	
 	"35" => array(
@@ -383,6 +382,16 @@ $pstruct = array(
 		"short",
 		"ubyte",
 		"byteArray",
+	),
+	
+	"84" => array(
+		"int",
+		"short",
+		"int",
+		"byte",
+		"int",
+		"int",
+		"int",
 	),
 	
 	"c8" => array(

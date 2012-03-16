@@ -8,6 +8,25 @@
 	}
 	
 	if($protocol <= 23){
+		$pstruct["01"] = array(
+			"int",
+			"string",
+			"long",
+			"string",
+			"int",
+			"byte",
+			"byte",
+			"ubyte",
+			"ubyte",
+		);
+		$pstruct["09"] = array(
+			"byte",
+			"byte",
+			"byte",
+			"short",
+			"long",
+			"string",
+		);
 		$pstruct["18"] = array(
 			"int",
 			"byte",
@@ -17,6 +36,23 @@
 			"byte",
 			"byte",
 			"entityMetadata",
+		);
+		$pstruct["33"] = array(
+			"int",
+			"short",
+			"int",
+			"byte",
+			"byte",
+			"byte",
+			"int",
+			"chunkArray",
+		);
+	
+		$pstruct["34"] = array(
+			"int",
+			"int",
+			"short",
+			"multiblockArray",
 		);
 	}
 	

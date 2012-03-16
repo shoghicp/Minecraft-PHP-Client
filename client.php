@@ -20,6 +20,10 @@ if(!defined('CLIENT_LOADED')){
 
 
 $versions = array(
+	"1.2.3" => 28,
+	"1.2.2" => 28,
+	"1.2.1" => 28,
+	"1.2.0" => 28,
 	"1.1.0" => 23,
 	"1.0.1" => 22,
 	"1.0.0" => 22,
@@ -33,7 +37,7 @@ $versions = array(
 	"b1.6" => 12,
 );
 
-$lastver = "1.1.0";
+$lastver = "1.2.3";
 
 
 
@@ -54,7 +58,7 @@ Parameters:
 \tpassword => password to use in minecraft.net, if PREMIUM
 \tsecure => use HTTPS to connect to minecraft.net
 \tdump => dump map chunks (experimental! [no crash])
-\tlog => write a log in packets.log and console.log, or if you specify an option, only one
+\tlog => write a log in packets.log, console.log and raw.log, or if you specify an option, only one
 \tping => ping (packet 0xFE) a server, and returns info
 \thide => hides elements here from console, separated by a comma (sign, chat, nspawn, state, position)
 \tcrazyness => moves around doing things (moves head) (values: mad, normal)
@@ -80,6 +84,9 @@ if(arg("log", false) != false){
 		file_put_contents($path."console.log", "");	
 	}elseif(arg("log", false) == "packets"){
 		file_put_contents($path."packets.log", "");
+	}elseif(arg("log", false) == "raw"){
+		file_put_contents($path."raw_recv.log", "");
+		file_put_contents($path."raw_sent.log", "");
 	}else{
 		file_put_contents($path."packets.log", "");
 		file_put_contents($path."console.log", "");	
@@ -377,14 +384,18 @@ while($sock and $restart == false){
 				$entities[$packet["eid"]]["y"] = $packet["y"];
 				$entities[$packet["eid"]]["z"] = $packet["z"];					
 				break;
-			case "33":				
-				if($packet["xS"] == 15 and $packet["yS"] == 127 and $packet["zS"] == 15){
-					chunk_add($packet["chunk"], $packet["x"], $packet["z"]);
-					chunk_clean($packet["x"], $packet["z"]);
+			case "33":
+				if($protocol <= 23){
+					if($packet["xS"] == 15 and $packet["yS"] == 127 and $packet["zS"] == 15){
+						chunk_add($packet["chunk"], $packet["x"], $packet["z"]);
+						chunk_clean($packet["x"], $packet["z"]);
+					}
 				}
 				break;
 			case "35":
-				chunk_edit_block($packet["x"],$packet["y"],$packet["z"],$packet["type"]);
+				if($protocol <= 23){
+					chunk_edit_block($packet["x"],$packet["y"],$packet["z"],$packet["type"]);
+				}
 				break;
 			case "46";
 				if(!in_array("state",$hide)){
