@@ -811,6 +811,13 @@ function buffer(){
 	if(!isset($buffer)){
 		$buffer = "";
 	}
+	if(THREADED && !CHILD){
+		if(strlen($buffer) < (MAX_BUFFER_BYTES / 8)){
+			$buffer .= fork_buffer();
+		}
+		return;
+	}
+	
 	if(strlen($buffer) < (MAX_BUFFER_BYTES / 8)){
 		if(strlen($buffer) < 128 and $connected){
 			socket_set_block($sock);

@@ -15,6 +15,7 @@ if(!defined('CLIENT_LOADED')){
 	//ini_set("display_errors", 0);
 	define("VERSION", "0.6.2 Alpha");
 	$VERSION = VERSION;
+	define("FORKING", function_exists("pcntl_fork"));
 	define("MAX_BUFFER_BYTES", 1024 * 1024 * 16);
 	define("RESTART_TIME", 60 * 60); //1h
 	ini_set("memory_limit", "128M");
@@ -86,9 +87,10 @@ Parameters:
 \towner => set owner (follow, commands)
 \tonly-food => only accept food as inventory items (default false)
 \tdynmap => enables dynmap if a port is given (default false)
+\tthreading => enables threading, only on unix (default false)
 
 Example:
-php {$argv[0]} --server=127.0.0.1 --username=shoghicp --version=b1.8.1 --hide=sign,chat
+php {$argv[0]} --server=127.0.0.1 --username=Player --version=b1.8.1 --hide=sign,chat
 
 USAGE;
 die();
@@ -141,8 +143,16 @@ if(@socket_connect($sock, $server, $port) === false){
 	die();	
 }
 socket_set_block($sock);
+
 socket_set_option($sock, SOL_SOCKET, SO_KEEPALIVE, 1);
 socket_set_option($sock, SOL_TCP, TCP_NODELAY, 1);
+
+if(FORKING && arg("forking", false) != false){
+	console("[+] Threading enabled");
+	include_once("forking.php");
+}else{
+	define("THREADED", false);
+}
 
 if(arg("ping", false) != false){
 	console("[+] Pinging ".$server." ...");
@@ -210,7 +220,7 @@ if($packet["server_id"] != "-" and $packet["server_id"] != "+"){
 				$login["username"] = $content[2];
 				$username = $content[2];
 				$login["session_id"] = $content[3];
-				console("[+] Logged into minecraft.net". PHP_EOL);
+				console("[+] Logged into minecraft.net");
 				break;
 		}
 	}
@@ -289,8 +299,7 @@ $restart = false;
 
 while($sock and $restart == false){
 	$time = microtime(true);
-	buffer();
-	if(strlen($buffer) > 0){	
+	if(strlen($buffer) > 0){
 		$packet = parse_packet();
 		switch($packet["pid"]){
 			case "00":
@@ -407,14 +416,22 @@ while($sock and $restart == false){
 			case "33":
 				if($protocol <= 23){
 					if($packet["xS"] == 15 and $packet["yS"] == 127 and $packet["zS"] == 15){
-						chunk_add($packet["chunk"], $packet["x"], $packet["z"]);
-						chunk_clean($packet["x"], $packet["z"]);
+						if(THREADED){
+							fork_chunk($packet, 33);
+						}else{
+							chunk_add($packet["chunk"], $packet["x"], $packet["z"]);
+							chunk_clean($packet["x"], $packet["z"]);
+						}
 					}
 				}
 				break;
 			case "35":
 				if($protocol <= 23){
-					chunk_edit_block($packet["x"],$packet["y"],$packet["z"],$packet["type"]);
+						if(THREADED){
+							fork_chunk($packet, 35);
+						}else{
+							chunk_edit_block($packet["x"],$packet["y"],$packet["z"],$packet["type"]);
+						}
 				}
 				break;
 			case "46";
@@ -463,6 +480,8 @@ while($sock and $restart == false){
 				die();
 				break;
 		}
+	}else{		
+		buffer();
 	}
 	
 	$do = false;
