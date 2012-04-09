@@ -13,7 +13,7 @@ if(!defined('CLIENT_LOADED')){
 	include_once("chunk.php");
 	//include("nbt.class.php");
 	//ini_set("display_errors", 0);
-	define("VERSION", "0.6.2 Alpha");
+	define("VERSION", "0.7 Alpha");
 	$VERSION = VERSION;
 	define("FORKING", function_exists("pcntl_fork"));
 	define("MAX_BUFFER_BYTES", 1024 * 1024 * 16);
@@ -155,7 +155,7 @@ if(FORKING && arg("forking", false) != false){
 }
 
 if(arg("ping", false) != false){
-	console("[+] Pinging ".$server." ...");
+	console("[+] Pinging ".$server.":".$port." ...");
 	write_packet("fe");
 	buffer();
 	$packet = parse_packet();
