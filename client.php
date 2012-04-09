@@ -14,6 +14,7 @@ if(!defined('CLIENT_LOADED')){
 	//include("nbt.class.php");
 	//ini_set("display_errors", 0);
 	define("VERSION", "0.6.2 Alpha");
+	$VERSION = VERSION;
 	define("MAX_BUFFER_BYTES", 1024 * 1024 * 16);
 	define("RESTART_TIME", 60 * 60); //1h
 	ini_set("memory_limit", "128M");
@@ -42,13 +43,31 @@ $versions = array(
 $lastver = "1.2.5";
 
 
+echo <<<INFO
+
+         /   \
+      /         \
+   /   MINECRAFT   \
+/         PHP         \
+|\       CLIENT      /|
+|.   \           /   .|
+| ´.     \   /     .´ |
+|    ´.    |    .´    |
+|       ´. | .´       |
+\          |          /
+   \       |       /
+      \    |    /
+         \ | /
+         
+\tby @shoghicp
+\tversion $VERSION
+
+
+INFO;
 
 if(arg("help", false) !== false){
 
 echo <<<USAGE
-
-<?php Minecraft PHP Client ?>
-\tby shoghicp
 Usage: php {$argv[0]} [parameters]
 
 Parameters:
@@ -113,19 +132,14 @@ $connected = true;
 
 $login = array("last_version" => "", "download_ticket" => "", "username" => $username, "session_id" => "");
 
-echo <<<INFO
-
-<?php Minecraft PHP Client ?>
-\tby shoghicp
-
-
-INFO;
-
 }
 
 $sock = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
 
-socket_connect($sock, $server, $port);
+if(@socket_connect($sock, $server, $port) === false){
+	console("[-] Couldn't connect to server");
+	die();	
+}
 socket_set_block($sock);
 socket_set_option($sock, SOL_SOCKET, SO_KEEPALIVE, 1);
 socket_set_option($sock, SOL_TCP, TCP_NODELAY, 1);
@@ -257,6 +271,9 @@ $entities = array();
 $players = array();
 $permissions = array(
 	$ginfo["owner"]["name"] => 3,
+	/*
+	If you want some mods for the bot, add usernames here
+	*/	
 	$username => 3,
 	"susoboiro" => 2,
 	"LoscoJones" => 2,
@@ -264,7 +281,7 @@ $permissions = array(
 	"Duendek86" => 2,
 	"kopron" => 2,
 	"creik" => 2,
-	"Sir_Pinkata",
+	"Sir_Pinkata" => 2,
 );
 $recorder = array("mode" => "", "name" => "", "positions" => "");
 $restart = false;
