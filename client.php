@@ -20,6 +20,7 @@ if(!defined('CLIENT_LOADED')){
 
 
 $versions = array(
+	"1.2.5" => 29,
 	"1.2.4" => 29,
 	"1.2.3" => 28,
 	"1.2.2" => 28,
@@ -38,7 +39,7 @@ $versions = array(
 	"b1.6" => 12,
 );
 
-$lastver = "1.2.4";
+$lastver = "1.2.5";
 
 
 
