@@ -87,7 +87,7 @@ Parameters:
 \towner => set owner (follow, commands)
 \tonly-food => only accept food as inventory items (default false)
 \tdynmap => enables dynmap if a port is given (default false)
-\tthreading => enables threading, only on unix (default false)
+\tthreading => enables threading, only on linux BETA (default false)
 
 Example:
 php {$argv[0]} --server=127.0.0.1 --username=Player --version=b1.8.1 --hide=sign,chat
@@ -147,7 +147,7 @@ socket_set_block($sock);
 socket_set_option($sock, SOL_SOCKET, SO_KEEPALIVE, 1);
 socket_set_option($sock, SOL_TCP, TCP_NODELAY, 1);
 
-if(FORKING && arg("forking", false) != false){
+if(FORKING && arg("threading", false) != false){
 	console("[+] Threading enabled");
 	include_once("forking.php");
 }else{

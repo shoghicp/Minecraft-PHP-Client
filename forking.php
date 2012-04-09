@@ -62,7 +62,7 @@ function forking_runtime($IOsock){
 function fork_chunk($packet, $pid){
 	global $parent_sock, $chunks;
 	socket_write($parent_sock,"chunk".($pid == 33 ? "":"2")."\n".urlencode(serialize($packet))."\n");
-	$chunks = unserialize(urldecode(socket_read($parent_sock,4096)));
+	$chunks = unserialize(urldecode(trim(socket_read($parent_sock,4096,PHP_NORMAL_READ))));
 }
 
 function fork_buffer(){
@@ -74,7 +74,7 @@ function fork_buffer(){
 	}else{
 		socket_set_nonblock($parent_sock);
 	}
-	return urldecode(socket_read($parent_sock,4096,PHP_NORMAL_READ));
+	return urldecode(trim(socket_read($parent_sock,4096,PHP_NORMAL_READ)));
 }
 
 ?>
