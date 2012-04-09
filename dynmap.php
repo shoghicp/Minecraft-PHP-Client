@@ -14,7 +14,7 @@ function DynMapCoords(){
 	);
 	$players = array();
 	foreach($worlds as $world){
-		$update = json_decode(curl_get("http://mespduendedreams.com:8197/".str_replace('{world}',$world,$config['get']).time()),true);
+		$update = json_decode(curl_get("http://mespduendedreams.com:".intval(arg("dynmap", false))."/".str_replace('{world}',$world,$config['get']).time()),true);
 		foreach($update['players'] as $player){
 			$players[$player['name']] = $player;
 		}	

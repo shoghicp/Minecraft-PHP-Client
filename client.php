@@ -13,7 +13,7 @@ if(!defined('CLIENT_LOADED')){
 	include_once("chunk.php");
 	//include("nbt.class.php");
 	//ini_set("display_errors", 0);
-	define("VERSION", "0.6.1 Alpha");
+	define("VERSION", "0.6.2 Alpha");
 	define("MAX_BUFFER_BYTES", 1024 * 1024 * 16);
 	define("RESTART_TIME", 60 * 60); //1h
 	ini_set("memory_limit", "128M");
@@ -66,6 +66,7 @@ Parameters:
 \tcrazyness => moves around doing things (moves head) (values: mad, normal)
 \towner => set owner (follow, commands)
 \tonly-food => only accept food as inventory items (default false)
+\tdynmap => enables dynmap if a port is given (default false)
 
 Example:
 php {$argv[0]} --server=127.0.0.1 --username=shoghicp --version=b1.8.1 --hide=sign,chat
@@ -455,7 +456,7 @@ while($sock and $restart == false){
 		$do = true;
 	}*/
 	
-	if($next <= $time and $time%32==0){
+	if($next <= $time and $time%32==0 and intval(arg("dynmap", false)) > 0){
 		foreach(DynMapCoords() as $player){
 			if(!isset($players[$player["name"]]) or $players[$player["name"]] == md5($player["name"])){
 				$players[$player["name"]] = md5($player["name"]);
