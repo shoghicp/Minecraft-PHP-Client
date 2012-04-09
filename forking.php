@@ -26,11 +26,13 @@ if($pid == -1){
 function forking_runtime($IOsock){
 	global $sock, $buffer, $chunks;
 	socket_set_nonblock($IOsock);
+	$last = time();
 	while($sock){
 		buffer();
-		if(!file_exists("/proc/".$pid){
+		if(($last + 15) < time() ){
 			return;
 		}
+		$last = time();
 		$action = trim(socket_read($IOsock,4096,PHP_NORMAL_READ));
 		switch($action){
 			case "buffer":
