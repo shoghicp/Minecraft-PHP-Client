@@ -13,13 +13,14 @@ if(!defined('CLIENT_LOADED')){
 	include_once("chunk.php");
 	//include("nbt.class.php");
 	//ini_set("display_errors", 0);
-	define("VERSION", "0.6 Alpha");
+	define("VERSION", "0.6.1 Alpha");
 	define("MAX_BUFFER_BYTES", 1024 * 1024 * 16);
 	define("RESTART_TIME", 60 * 60); //1h
 	ini_set("memory_limit", "128M");
 
 
 $versions = array(
+	"1.2.4" => 29,
 	"1.2.3" => 28,
 	"1.2.2" => 28,
 	"1.2.1" => 28,
@@ -37,7 +38,7 @@ $versions = array(
 	"b1.6" => 12,
 );
 
-$lastver = "1.2.3";
+$lastver = "1.2.4";
 
 
 
