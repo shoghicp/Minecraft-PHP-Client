@@ -1,5 +1,55 @@
 <?php
 
+function chunk_read($data, $X, $Z, $onlyBlocks = false, $biome = false){
+	global $protocol;
+	if($protocol <= 23){
+		return old_chunk_read($data, $X, $Z, $onlyBlocks);
+	}
+	$chunk = array(
+		"block" => array(),
+		"meta" => array(),
+		"blight" => array(),
+		"slight" => array(),
+	);	
+	 //Loop over 16x16x16 chunks in the 16x256x16 column
+	 $offset = 0;
+	 $read = 4096;
+	 for ($i=0;$i<16;$i++) {
+   //If the bitmask indicates this chunk has been sent...
+   if ($bitmask & 1 << $i) {
+     //Read data...
+     $cubic_chunk_data = substr($data, $offset, $read); //2048 for the other arrays, where you'll need to split the data
+     $offset += $read;
+     $read = 2048;
+     $len = strlen($cubic_chunk_data);
+     for($j=0; $j<$len; $j++) {
+       //Retrieve x,y,z and data from each element in cubic_chunk_array
+       
+       //Byte arrays
+       $x = $chunk_x*16 + $j & 0x0F;
+       $y = $i*16 + $j >> 8;
+       $z = $chunk_z*16 + ($j & 0xF0) >> 4;
+       $data = $cubic_chunk_data[$j];
+       
+       //Nibble arrays
+       $data1 = $cubic_chunk_data[$j] & 0x0F;
+       $data2 = $cubic_chunk_data[$j] >> 4;
+       
+       $k = 2*$j;
+       $x1 = $chunk_x*16 + $k & 0x0F;
+       $y1 = $i*16       + $k >> 8;
+       $z1 = $chunk_z*16 + ($k & 0xF0) >> 4;
+       
+       $k++;
+       $x2 = $chunk_x*16 + $k & 0x0F;
+       $y2 = $i*16       + $k >> 8;
+       $z2 = $chunk_z*16 + ($k & 0xF0) >> 4;
+      }
+   }
+ }
+	
+}
+
 function old_chunk_read($data, $X, $Z, $onlyBlocks = false){
 	$totalOffset = 0;
 	$size = strlen($data);
@@ -37,7 +87,7 @@ function old_chunk_read($data, $X, $Z, $onlyBlocks = false){
 	return $onlyBlocks == true ? $chunk["block"]:$chunk;
 }
 
-function old_chunk_add($data, $x, $z){
+function chunk_add($data, $x, $z){
 	global $chunks;
 	$x /= 16;
 	$z /= 16;
@@ -59,7 +109,8 @@ function chunk_clean($x, $z){
 function chunk_load($x, $z){
 	global $chunks, $tchunk;
 	if(!isset($tchunk[$x."|".$z]) and isset($chunks[$x."|".$z])){
-		$tchunk[$x."|".$z] = old_chunk_read($chunks[$x."|".$z],$x,$z,true);
+		
+		$tchunk[$x."|".$z] = chunk_read($chunks[$x."|".$z],$x,$z,true);
 		return true;
 	}elseif(isset($tchunk[$x."|".$z])){
 		return true;
@@ -89,6 +140,28 @@ function chunk_get_zone($x1,$z1,$y1, $x2,$z2,$y2){
 }
 
 function chunk_get_block($x,$y,$z){
+	global $chunks, $protocol;
+	if($protocol <= 23){
+		return old_chunk_get_block($x,$y,$z);
+	}
+	$x = intval($x);
+	$y = intval($y);
+	$z = intval($z);
+	$X = intval($x / 16);
+	$Z = intval($z / 16);
+	
+	$x %= 16;
+	$y %= 128;
+	$z %= 16;
+	
+	if(!isset($chunks[$X."|".$Z])){
+		return 0x00; //AIR
+	}
+	$index = $y + ($z * 128) + ($x * 128 * 16);
+	return read_byte($chunks[$X."|".$Z]{$index},false);
+}
+
+function old_chunk_get_block($x,$y,$z){
 	global $chunks;
 	$x = intval($x);
 	$y = intval($y);
@@ -101,7 +174,7 @@ function chunk_get_block($x,$y,$z){
 	$z %= 16;
 	
 	if(!isset($chunks[$X."|".$Z])){
-		return false;
+		return 0x00; //AIR
 	}
 	$index = $y + ($z * 128) + ($x * 128 * 16);
 	return read_byte($chunks[$X."|".$Z]{$index},false);

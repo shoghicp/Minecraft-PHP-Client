@@ -192,6 +192,13 @@ function min_struct($array){
 	return $offset;
 }
 
+function wait_buffer($to){
+	global $buffer, $connected;
+	while(!isset($buffer{$to}) and $connected){
+		buffer(); //FIXES SLOW-CONNECTION ERROR
+	}
+}
+
 function parse_packet(){
 	global $buffer, $pstruct, $path, $connected;
 	$pid = bin2hex($buffer{0});
@@ -204,15 +211,13 @@ function parse_packet(){
 		write_packet("ff", array("message" => "Bad packet id ".$pid));
 		if(arg("log", false) === true or (arg("log", false) != false and arg("log", false) == "packets")){
 			$p = "==".time()."==> ERROR Bad packet id $pid :".PHP_EOL;
-			$p .= hexdump(substr($buffer,0,64), false, false, true);
-			$p .= PHP_EOL . "--------------- (64 byte extract) ----------" .PHP_EOL .PHP_EOL;
+			$p .= hexdump(substr($buffer,0,512), false, false, true);
+			$p .= PHP_EOL . "--------------- (512 byte extract) ----------" .PHP_EOL .PHP_EOL;
 			file_put_contents($path."packets.log", $p, FILE_APPEND);
 		}
 		return array("pid" => "ff", "message" => "Bad packet id ".$pid);
-	}	
-	while(!isset($buffer{$offset+min_struct($pstruct[$pid])}) and $connected){
-		buffer(); //FIXES SLOW-CONNECTION ERROR
 	}
+	wait_buffer(min_struct($pstruct[$pid]));
 	$field = 0;
 	$continue = true;
 	foreach($pstruct[$pid] as $type){
@@ -231,6 +236,7 @@ function parse_packet(){
 			case "string":
 				$len = read_short(substr($buffer,$offset,2));
 				$offset += 2;
+				wait_buffer($offset+$len*2-1);
 				$raw[] = $r = substr($buffer,$offset,$len * 2);
 				$pdata[] = utf16_decode($r);
 				$offset += $len * 2;

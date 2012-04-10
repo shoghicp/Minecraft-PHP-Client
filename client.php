@@ -13,7 +13,7 @@ if(!defined('CLIENT_LOADED')){
 	include_once("chunk.php");
 	//include("nbt.class.php");
 	//ini_set("display_errors", 0);
-	define("VERSION", "0.7.1 Alpha");
+	define("VERSION", "0.7.3 Alpha");
 	$VERSION = VERSION;
 	define("FORKING", function_exists("pcntl_fork"));
 	define("MAX_BUFFER_BYTES", 1024 * 1024 * 16);
@@ -414,7 +414,7 @@ while($sock and $restart == false){
 						if(THREADED){
 							fork_chunk($packet, 33);
 						}else{
-							old_chunk_add($packet["chunk"], $packet["x"], $packet["z"]);
+							chunk_add($packet["chunk"], $packet["x"], $packet["z"]);
 							chunk_clean($packet["x"], $packet["z"]);
 						}
 					}
