@@ -13,7 +13,7 @@ if(!defined('CLIENT_LOADED')){
 	include_once("chunk.php");
 	//include("nbt.class.php");
 	//ini_set("display_errors", 0);
-	define("VERSION", "0.7 Alpha");
+	define("VERSION", "0.7.1 Alpha");
 	$VERSION = VERSION;
 	define("FORKING", function_exists("pcntl_fork"));
 	define("MAX_BUFFER_BYTES", 1024 * 1024 * 16);
@@ -104,17 +104,12 @@ $version	= arg("version", $lastver);
 $protocol	= intval(arg("protocol", $versions[$lastver]));
 
 if(arg("log", false) != false){
-	if(arg("log", false) == "console"){
-		file_put_contents($path."console.log", "");	
-	}elseif(arg("log", false) == "packets"){
-		file_put_contents($path."packets.log", "");
-	}elseif(arg("log", false) == "raw"){
+	if(arg("log", false) == "raw"){
 		file_put_contents($path."raw_recv.log", "");
 		file_put_contents($path."raw_sent.log", "");
-	}else{
-		file_put_contents($path."packets.log", "");
-		file_put_contents($path."console.log", "");	
 	}
+	file_put_contents($path."packets.log", "");
+	file_put_contents($path."console.log", "");	
 }
 if($version != $lastver){
 	$protocol = $versions[$version];
@@ -419,7 +414,7 @@ while($sock and $restart == false){
 						if(THREADED){
 							fork_chunk($packet, 33);
 						}else{
-							chunk_add($packet["chunk"], $packet["x"], $packet["z"]);
+							old_chunk_add($packet["chunk"], $packet["x"], $packet["z"]);
 							chunk_clean($packet["x"], $packet["z"]);
 						}
 					}

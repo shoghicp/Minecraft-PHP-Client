@@ -1,6 +1,6 @@
 <?php
 
-function chunk_read($data, $X, $Z, $onlyBlocks = false){
+function old_chunk_read($data, $X, $Z, $onlyBlocks = false){
 	$totalOffset = 0;
 	$size = strlen($data);
 	$chunkBlocks = 16 * 16 * 128; //32768
@@ -37,7 +37,7 @@ function chunk_read($data, $X, $Z, $onlyBlocks = false){
 	return $onlyBlocks == true ? $chunk["block"]:$chunk;
 }
 
-function chunk_add($data, $x, $z){
+function old_chunk_add($data, $x, $z){
 	global $chunks;
 	$x /= 16;
 	$z /= 16;
@@ -59,7 +59,7 @@ function chunk_clean($x, $z){
 function chunk_load($x, $z){
 	global $chunks, $tchunk;
 	if(!isset($tchunk[$x."|".$z]) and isset($chunks[$x."|".$z])){
-		$tchunk[$x."|".$z] = chunk_read($chunks[$x."|".$z],$x,$z,true);
+		$tchunk[$x."|".$z] = old_chunk_read($chunks[$x."|".$z],$x,$z,true);
 		return true;
 	}elseif(isset($tchunk[$x."|".$z])){
 		return true;

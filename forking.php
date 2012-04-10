@@ -29,24 +29,26 @@ function forking_runtime($IOsock){
 	$last = time();
 	while($sock){
 		buffer();
-		if(($last + 15) < time() ){
+		if(($last + 10) < time()){
 			return;
 		}
-		$last = time();
 		$action = trim(socket_read($IOsock,4096,PHP_NORMAL_READ));
 		switch($action){
 			case "buffer":
+				$last = time();
 				$len = strlen($buffer) > 4096 ? 4096:strlen($buffer);				
 				socket_write($IOsock, urlencode(substr($buffer,0,$len))."\n");
 				$buffer = substr($buffer,$len);
 				break;
 			case "chunk":
+				$last = time();
 				$packet = unserialize(urldecode(trim(socket_read($IOsock,4096*16,PHP_NORMAL_READ))));
-				chunk_add($packet["chunk"], $packet["x"], $packet["z"]);
+				old_chunk_add($packet["chunk"], $packet["x"], $packet["z"]);
 				chunk_clean($packet["x"], $packet["z"]);
 				socket_write($IOsock, urlencode(serialize($chunks))."\n");
 				break;
 			case "chunk2":
+				$last = time();
 				$packet = unserialize(urldecode(trim(socket_read($IOsock,4096*16,PHP_NORMAL_READ))));
 				chunk_edit_block($packet["x"],$packet["y"],$packet["z"],$packet["type"]);
 				socket_write($IOsock, urlencode(serialize($chunks))."\n");

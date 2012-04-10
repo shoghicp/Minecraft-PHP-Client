@@ -18,7 +18,7 @@ function write_string($str){
 }
 
 function read_byte($str, $signed = true){
-	$b = hexdec(bin2hex($str));
+	$b = hexdec(bin2hex($str{0}));
 	if($signed == true){
 		$b = $b>127 ? -(256-$b+1):$b;
 	}
@@ -166,22 +166,52 @@ function arguments ( $args ){
     return $ret;
 }
 
+function min_struct($array){
+	$offset = 0;
+	foreach($array as $type){
+		switch($type){
+			case "float":
+			case "int":
+				$offset += 4;
+				break;
+			case "double":
+			case "long":
+				$offset += 8;
+				break;
+			case "bool":
+			case "boolean":
+			case "byte":
+				$offset += 1;
+				$offset += 1;
+				break;
+			case "short":
+				$offset += 2;
+				break;	
+		}
+	}
+	return $offset;
+}
+
 function parse_packet(){
-	global $buffer, $pstruct, $path;
+	global $buffer, $pstruct, $path, $connected;
 	$pid = bin2hex($buffer{0});
 	$data = array();	
 	$pdata = array();
 	$raw = array();
 	$offset = 1;
+	
 	if(!isset($pstruct[$pid])){
 		write_packet("ff", array("message" => "Bad packet id ".$pid));
-		if(arg("log", false) != false and arg("log", false) != "console"){
+		if(arg("log", false) === true or (arg("log", false) != false and arg("log", false) == "packets")){
 			$p = "==".time()."==> ERROR Bad packet id $pid :".PHP_EOL;
 			$p .= hexdump(substr($buffer,0,64), false, false, true);
 			$p .= PHP_EOL . "--------------- (64 byte extract) ----------" .PHP_EOL .PHP_EOL;
 			file_put_contents($path."packets.log", $p, FILE_APPEND);
 		}
 		return array("pid" => "ff", "message" => "Bad packet id ".$pid);
+	}	
+	while(!isset($buffer{$offset+min_struct($pstruct[$pid])}) and $connected){
+		buffer(); //FIXES SLOW-CONNECTION ERROR
 	}
 	$field = 0;
 	$continue = true;
@@ -257,6 +287,7 @@ function parse_packet(){
 			case "chunkArray":
 				$len = max(0,$pdata[6]);
 				$first = false;
+				$r = "";
 				while(strlen($r)<$len){ //Sometimes low-bandwidth servers made client a crash
 					if($first == true){
 						buffer();
@@ -287,6 +318,7 @@ function parse_packet(){
 			case "newChunkArray":
 				$len = max(0,$pdata[5]);
 				$first = false;
+				$r = "";
 				while(strlen($r)<$len){ //Sometimes low-bandwidth servers made client a crash
 					if($first == true){
 						buffer();
@@ -299,9 +331,9 @@ function parse_packet(){
 				$offset += $len;
 				break;
 			case "newMultiblockArray":
-				$count = $pdata[count($pdata)-1];
+				$count = $pdata[3];
+				$pdata[] = substr($buffer, $offset, $len);
 				$offset += $count;
-				$pdata[] = "";
 				break;
 			case "slotArray":
 			case "slotData":
@@ -405,6 +437,8 @@ function parse_packet(){
 		}
 		++$field;
 	}
+	
+
 	if(arg("log", false) === true or (arg("log", false) != false and arg("log", false) == "packets")){
 		$p = "==".time()."==> RECEIVED Packet $pid, lenght $offset :".PHP_EOL;
 		$p .= hexdump(substr($buffer,0,$offset), false, false, true);
@@ -414,7 +448,7 @@ function parse_packet(){
 		file_put_contents($path."raw_recv.log", substr($buffer,0,$offset), FILE_APPEND);
 	}
 	
-	$buffer = substr($buffer, $offset); // Clear packet
+	$buffer = substr($buffer, $offset); // Clear packet	
 	
 	switch($pid){
 		case "00":
@@ -811,20 +845,21 @@ function buffer(){
 	if(!isset($buffer)){
 		$buffer = "";
 	}
-	if(THREADED && !CHILD){
-		if(strlen($buffer) < (MAX_BUFFER_BYTES / 8)){
+	$len = strlen($buffer);
+	if(THREADED and !CHILD){
+		if($len < (MAX_BUFFER_BYTES / 8)){
 			$buffer .= fork_buffer();
 		}
 		return;
 	}
 	
-	if(strlen($buffer) < (MAX_BUFFER_BYTES / 8)){
+	if($len < (MAX_BUFFER_BYTES / 8)){
 		if(strlen($buffer) < 128 and $connected){
 			socket_set_block($sock);
 		}else{
 			socket_set_nonblock($sock);
 		}
-		$read = @socket_read($sock,4096, PHP_BINARY_READ);
+		$read = @socket_read($sock,MAX_BUFFER_BYTES-$len, PHP_BINARY_READ);
 		if($read != false and $read != ""){
 			$buffer .= $read;
 		}elseif(socket_last_error($sock) == 104){
