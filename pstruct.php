@@ -412,6 +412,10 @@ $pstruct = array(
 		"bool",
 	),
 	
+	"cb" => array(
+		"string",
+	),
+	
 	"fa" => array(
 		"string",
 		"short",
