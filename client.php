@@ -66,6 +66,12 @@ echo <<<INFO
 
 INFO;
 
+echo "------------- READ ME ---------------".PHP_EOL;
+echo "This client is superseeded by Minecraf PHP Client 2. Now new versions of this client will be released".PHP_EOL;
+echo "Please download it at https://github.com/shoghicp/Minecraft-PHP-Client-2".PHP_EOL;
+echo PHP_EOL.PHP_EOL;
+sleep(10);
+
 if(arg("help", false) !== false){
 
 echo <<<USAGE
@@ -299,7 +305,7 @@ while($sock and $restart == false){
 		switch($packet["pid"]){
 			case "00":
 				write_packet("00",$packet);
-				break;			
+				break;
 			case "01":
 				console("[+] Login Request accepted");
 				console("[*] EID: ".$packet["eid"]);
