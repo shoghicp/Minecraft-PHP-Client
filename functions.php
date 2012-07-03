@@ -338,7 +338,7 @@ function parse_packet(){
 				break;
 			case "newMultiblockArray":
 				$count = $pdata[3];
-				$pdata[] = substr($buffer, $offset, $len);
+				$pdata[] = substr($buffer, $offset, $count);
 				$offset += $count;
 				break;
 			case "slotArray":
