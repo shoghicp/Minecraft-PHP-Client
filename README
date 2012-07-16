@@ -29,6 +29,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 	by @shoghicp
 
 
+
+WARNONG: This program is superseded by Minecraft PHP Client 2
+
+
 Run client.php with PHP-CLI
 
 Example:
